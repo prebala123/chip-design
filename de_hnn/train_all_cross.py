@@ -1,7 +1,9 @@
 import os
 import numpy as np
+import pandas as pd
 import pickle
 import time
+from datetime import datetime
 
 import torch
 import torch.nn as nn
@@ -52,11 +54,11 @@ if test:
 
 model_type = "dehnn" #this can be one of ["dehnn", "dehnn_att", "digcn", "digat"] "dehnn_att" might need large memory usage
 num_layer = 3 #large number will cause OOM
-num_dim = 24 #large number will cause OOM
+num_dim = 16 #large number will cause OOM
 vn = True #use virtual node or not
 trans = False #use transformer or not
 aggr = "add" #use aggregation as one of ["add", "max"]
-device = "cuda" #use cuda or cpu
+device = "cpu" #use cuda or cpu
 learning_rate = 0.001
 num_epochs = 5
 
@@ -131,9 +133,14 @@ criterion_node = nn.MSELoss()
 criterion_net = nn.MSELoss()
 optimizer = optim.AdamW(model.parameters(), lr=learning_rate,  weight_decay=0.01)
 load_data_indices = [idx for idx in range(len(h_dataset))]
-# all_train_indices, all_valid_indices, all_test_indices = load_data_indices[:10], load_data_indices[10:], load_data_indices[10:]
-all_train_indices, all_valid_indices, all_test_indices = load_data_indices[:5], load_data_indices[5:6], load_data_indices[5:6]
+all_train_indices, all_valid_indices, all_test_indices = load_data_indices[:10], load_data_indices[10:], load_data_indices[10:]
 best_total_val = None
+
+now = datetime.now()
+timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
+filepath = f"baselines/{model_type}_{num_epochs}_{num_layer}_{num_dim}_{vn}_{trans}_{timestamp}_baseline.csv"
+with open(filepath, 'a') as f:
+    f.write('Epoch,Node_Train_Loss,Net_Train_Loss,Node_Valid_Loss,Net_Valid_Loss,Time\n')
 
 if not test:
     start_time = time.time()
@@ -191,6 +198,10 @@ if not test:
         if (best_total_val is None) or ((loss_node_all/all_train_idx) < best_total_val):
             best_total_val = loss_node_all/all_train_idx
             torch.save(model, f"{model_type}_{num_layer}_{num_dim}_{vn}_{trans}_model.pt")
+
+        with open(filepath, 'a') as f:
+            f.write(f'{epoch+1},{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},{round(time.time()-start_time, 2)}\n')
+        
 else:
     all_test_idx = 0
     test_loss_node_all = 0

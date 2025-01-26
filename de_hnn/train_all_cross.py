@@ -60,12 +60,10 @@ trans = False #use transformer or not
 aggr = "add" #use aggregation as one of ["add", "max"]
 device = "cpu" #use cuda or cpu
 learning_rate = 0.001
-num_epochs = 5
-
-torch.cuda.empty_cache()
+num_epochs = 100
 
 if not reload_dataset:
-    dataset = NetlistDataset(data_dir="data/superblue", load_pe = True, pl = True, processed = True, load_indices=None)
+    dataset = NetlistDataset(data_dir="data/superblue", load_pe = False, pl = True, processed = True, load_indices=None)
     h_dataset = []
     for data in tqdm(dataset):
         num_instances = data.node_features.shape[0]
@@ -73,7 +71,8 @@ if not reload_dataset:
         data.edge_index_sink_to_net[1] = data.edge_index_sink_to_net[1] - num_instances
         data.edge_index_source_to_net[1] = data.edge_index_source_to_net[1] - num_instances
         
-        out_degrees = data.net_features[:, 1]
+        # print(data.net_features.shape)
+        out_degrees = data.net_features[:, 0]
         mask = (out_degrees < 3000)
         mask_edges = mask[data.edge_index_source_to_net[1]] 
         filtered_edge_index_source_to_net = data.edge_index_source_to_net[:, mask_edges]
@@ -85,7 +84,13 @@ if not reload_dataset:
 
         h_data = HeteroData()
         h_data['node'].x = data.node_features
-        h_data['net'].x = data.net_features
+        # print(data.node_features.shape)
+        h_data['net'].x = data.net_features.float()
+        print(h_data['node'].x.shape)
+        # print(h_data['node'].x.type())
+        print(h_data['net'].x.shape)
+        # print(h_data['net'].x.type())
+
         
         edge_index = torch.concat([data.edge_index_sink_to_net, data.edge_index_source_to_net], dim=1)
         h_data['node', 'to', 'net'].edge_index, h_data['node', 'to', 'net'].edge_weight = gcn_norm(edge_index, add_self_loops=False)
@@ -113,10 +118,10 @@ if not reload_dataset:
         h_data['variant_data_lst'] = variant_data_lst
         h_dataset.append(h_data)
         
-    torch.save(h_dataset, "h_dataset.pt")
+    torch.save(h_dataset, "h_dataset_eigenvectors.pt")
     
 else:
-    dataset = torch.load("h_dataset.pt")
+    dataset = torch.load("h_dataset_eigenvectors.pt")
     h_dataset = []
     for data in dataset:
         h_dataset.append(data)
@@ -138,7 +143,7 @@ best_total_val = None
 
 now = datetime.now()
 timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-filepath = f"baselines/{model_type}_{num_epochs}_{num_layer}_{num_dim}_{vn}_{trans}_{timestamp}_baseline.csv"
+filepath = f"baselines/{model_type}_{num_epochs}_{num_layer}_{num_dim}_{vn}_{trans}_{timestamp}_eigenvectors.csv"
 with open(filepath, 'a') as f:
     f.write('Epoch,Node_Train_Loss,Net_Train_Loss,Node_Valid_Loss,Net_Valid_Loss,Time\n')
 
@@ -166,7 +171,7 @@ if not test:
     
                 loss_node = criterion_node(node_representation, target_node.to(device))
                 loss_net = criterion_net(net_representation, target_net_demand.to(device))
-                loss = loss_node + loss_net
+                loss = loss_node# + loss_net
                 loss.backward()
                 optimizer.step()   
     

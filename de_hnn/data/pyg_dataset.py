@@ -141,6 +141,7 @@ class NetlistDataset(Dataset):
                     f.close()
 
                     evects = torch.Tensor(dictionary['evects'])
+                    # print(evects.shape)
                     example.x = torch.cat([example.x, evects[:example.x.shape[0]]], dim = 1)
                     example.x_net = torch.cat([example.x_net, evects[example.x.shape[0]:]], dim = 1)
 

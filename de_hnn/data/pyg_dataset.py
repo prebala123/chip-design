@@ -118,14 +118,17 @@ class NetlistDataset(Dataset):
                 net_demand_dictionary = pickle.load(f)
                 f.close()
 
-                net_demand = torch.Tensor(net_demand_dictionary['demand'])
+                capacity = np.array([d/c if c > 0 else 0 for d, c in zip(net_demand_dictionary['demand'], net_demand_dictionary['capacity'])])
+                clf = (capacity > 0.9).astype(int)
+                # net_demand = torch.Tensor(net_demand_dictionary['demand'])
+                net_demand = torch.tensor(clf).long()
 
                 file_name = data_load_fp + '/' + 'targets.pkl'
                 f = open(file_name, 'rb')
                 node_demand_dictionary = pickle.load(f)
                 f.close()
 
-                node_demand = torch.Tensor(node_demand_dictionary['demand'])
+                node_demand = torch.Tensor(node_demand_dictionary['classify']).flatten().long()
                 
                 fn = data_load_fp + '/' + 'net_hpwl.pkl'
                 f = open(fn, "rb")

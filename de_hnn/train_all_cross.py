@@ -47,7 +47,7 @@ def compute_metrics(true_labels, predicted_labels):
 ### hyperparameter ###
 test = False # if only test but not train
 restart = False # if restart training
-reload_dataset = True # if reload already processed h_dataset
+reload_dataset = False # if reload already processed h_dataset
 
 if test:
     restart = True
@@ -60,10 +60,10 @@ trans = False #use transformer or not
 aggr = "add" #use aggregation as one of ["add", "max"]
 device = "cpu" #use cuda or cpu
 learning_rate = 0.001
-num_epochs = 100
+num_epochs = 50
 
 if not reload_dataset:
-    dataset = NetlistDataset(data_dir="data/superblue", load_pe = False, pl = True, processed = True, load_indices=None)
+    dataset = NetlistDataset(data_dir="data/superblue", load_pe = True, pl = True, processed = False, load_indices=None)
     h_dataset = []
     for data in tqdm(dataset):
         num_instances = data.node_features.shape[0]
@@ -110,18 +110,18 @@ if not reload_dataset:
         vn_node = torch.concat([global_mean_pool(h_data['node'].x, batch), 
                 global_max_pool(h_data['node'].x, batch)], dim=1)
 
-        node_demand = (node_demand - torch.mean(node_demand)) / torch.std(node_demand)
-        net_hpwl = (net_hpwl - torch.mean(net_hpwl)) / torch.std(net_hpwl)
-        net_demand = (net_demand - torch.mean(net_demand))/ torch.std(net_demand)
+        # node_demand = (node_demand - torch.mean(node_demand)) / torch.std(node_demand)
+        # net_hpwl = (net_hpwl - torch.mean(net_hpwl)) / torch.std(net_hpwl)
+        # net_demand = (net_demand - torch.mean(net_demand))/ torch.std(net_demand)
 
         variant_data_lst.append((node_demand, net_hpwl, net_demand, batch, num_vn, vn_node)) 
         h_data['variant_data_lst'] = variant_data_lst
         h_dataset.append(h_data)
         
-    torch.save(h_dataset, "h_dataset_eigenvectors.pt")
+    torch.save(h_dataset, "h_dataset.pt")
     
 else:
-    dataset = torch.load("h_dataset_eigenvectors.pt")
+    dataset = torch.load("h_dataset.pt")
     h_dataset = []
     for data in dataset:
         h_dataset.append(data)
@@ -132,10 +132,10 @@ h_data = h_dataset[0]
 if restart:
     model = torch.load(f"{model_type}_{num_layer}_{num_dim}_{vn}_{trans}_model.pt")
 else:
-    model = GNN_node(num_layer, num_dim, 1, 1, node_dim = h_data['node'].x.shape[1], net_dim = h_data['net'].x.shape[1], gnn_type=model_type, vn=vn, trans=trans, aggr=aggr, JK="Normal").to(device)
+    model = GNN_node(num_layer, num_dim, 2, 2, node_dim = h_data['node'].x.shape[1], net_dim = h_data['net'].x.shape[1], gnn_type=model_type, vn=vn, trans=trans, aggr=aggr, JK="Normal").to(device)
 
-criterion_node = nn.MSELoss()
-criterion_net = nn.MSELoss()
+criterion_node = nn.CrossEntropyLoss()
+criterion_net = nn.CrossEntropyLoss()
 optimizer = optim.AdamW(model.parameters(), lr=learning_rate,  weight_decay=0.01)
 load_data_indices = [idx for idx in range(len(h_dataset))]
 all_train_indices, all_valid_indices, all_test_indices = load_data_indices[:10], load_data_indices[10:], load_data_indices[10:]
@@ -143,7 +143,7 @@ best_total_val = None
 
 now = datetime.now()
 timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-filepath = f"baselines/{model_type}_{num_epochs}_{num_layer}_{num_dim}_{vn}_{trans}_{timestamp}_eigenvectors.csv"
+filepath = f"baselines/{model_type}_{num_epochs}_{num_layer}_{num_dim}_{vn}_{trans}_{timestamp}_baseline.csv"
 with open(filepath, 'a') as f:
     f.write('Epoch,Node_Train_Loss,Net_Train_Loss,Node_Valid_Loss,Net_Valid_Loss,Time\n')
 

@@ -7,7 +7,7 @@ from tqdm import tqdm
 import pickle
 import numpy as np
 
-from utils import compute_degrees
+# from utils import compute_degrees
 
 class NetlistDataset(Dataset):
     def __init__(self, data_dir, load_pe = True, load_pd = True, num_eigen = 10, pl = True, processed = False, load_indices = None, density = False):
@@ -120,15 +120,16 @@ class NetlistDataset(Dataset):
 
                 capacity = np.array([d/c if c > 0 else 0 for d, c in zip(net_demand_dictionary['demand'], net_demand_dictionary['capacity'])])
                 clf = (capacity > 0.9).astype(int)
-                # net_demand = torch.Tensor(net_demand_dictionary['demand'])
-                net_demand = torch.tensor(clf).long()
+                net_demand = torch.Tensor(net_demand_dictionary['demand'])
+                net_congestion = torch.tensor(clf).long()
 
                 file_name = data_load_fp + '/' + 'targets.pkl'
                 f = open(file_name, 'rb')
                 node_demand_dictionary = pickle.load(f)
                 f.close()
 
-                node_demand = torch.Tensor(node_demand_dictionary['classify']).flatten().long()
+                node_demand = torch.Tensor(node_demand_dictionary['demand']).flatten().long()
+                node_congestion = torch.Tensor(node_demand_dictionary['classify']).flatten().long()
                 
                 fn = data_load_fp + '/' + 'net_hpwl.pkl'
                 f = open(fn, "rb")
@@ -169,6 +170,8 @@ class NetlistDataset(Dataset):
                         edge_index_source_to_net = edge_index_source_to_net, 
                         node_demand = node_demand, 
                         net_demand = net_demand,
+                        node_congestion = node_congestion,
+                        net_congestion = net_congestion,
                         net_hpwl = net_hpwl,
                         batch = example.part_id,
                         num_vn = example.num_vn,

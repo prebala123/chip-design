@@ -47,23 +47,23 @@ def compute_metrics(true_labels, predicted_labels):
 ### hyperparameter ###
 test = False # if only test but not train
 restart = False # if restart training
-reload_dataset = False # if reload already processed h_dataset
+reload_dataset = True # if reload already processed h_dataset
 
 if test:
     restart = True
 
 model_type = "dehnn" #this can be one of ["dehnn", "dehnn_att", "digcn", "digat"] "dehnn_att" might need large memory usage
-num_layer = 3 #large number will cause OOM
+num_layer = 2 #large number will cause OOM
 num_dim = 16 #large number will cause OOM
 vn = True #use virtual node or not
 trans = False #use transformer or not
 aggr = "add" #use aggregation as one of ["add", "max"]
 device = "cpu" #use cuda or cpu
 learning_rate = 0.001
-num_epochs = 50
+num_epochs = 500
 
 if not reload_dataset:
-    dataset = NetlistDataset(data_dir="data/superblue", load_pe = True, pl = True, processed = False, load_indices=None)
+    dataset = NetlistDataset(data_dir="data/superblue", load_pe = True, pl = True, processed = True, load_indices=None)
     h_dataset = []
     for data in tqdm(dataset):
         num_instances = data.node_features.shape[0]
@@ -138,14 +138,14 @@ criterion_node = nn.CrossEntropyLoss()
 criterion_net = nn.CrossEntropyLoss()
 optimizer = optim.AdamW(model.parameters(), lr=learning_rate,  weight_decay=0.01)
 load_data_indices = [idx for idx in range(len(h_dataset))]
-all_train_indices, all_valid_indices, all_test_indices = load_data_indices[:10], load_data_indices[10:], load_data_indices[10:]
+all_train_indices, all_valid_indices, all_test_indices = load_data_indices[:7] + load_data_indices[8:11], load_data_indices[7:8], load_data_indices[7:8]
 best_total_val = None
 
 now = datetime.now()
 timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-filepath = f"baselines/{model_type}_{num_epochs}_{num_layer}_{num_dim}_{vn}_{trans}_{timestamp}_baseline.csv"
+filepath = f"baselines/{model_type}_{num_epochs}_{num_layer}_{num_dim}_{vn}_{trans}_{timestamp}_classify.csv"
 with open(filepath, 'a') as f:
-    f.write('Epoch,Node_Train_Loss,Net_Train_Loss,Node_Valid_Loss,Net_Valid_Loss,Time\n')
+    f.write('Epoch,tp,fp,tn,fn,p,r,fsc,m,Time\n')
 
 if not test:
     start_time = time.time()
@@ -197,15 +197,38 @@ if not test:
                 val_loss_node_all +=  val_loss_node.item()
                 val_loss_net_all += val_loss_net.item()
                 all_valid_idx += 1
+
+                outs = node_representation.detach().numpy()
+                pred_vals = np.array([0 if i > j else 1 for i, j in outs])
+                real_vals = target_node.numpy()
+                tp, fp, tn, fn = 0, 0, 0, 0
+                for i, j in zip(pred_vals, real_vals):
+                    if i == 1 and j == 1:
+                        tp += 1
+                    elif i == 1 and j == 0:
+                        fp += 1
+                    elif i == 0 and j == 1:
+                        fn += 1
+                    else:
+                        tn += 1
+                p = tp / (tp + fp)
+                r = tp / (tp + fn)
+                fsc = (2 * p * r) / (p + r)
+                m = np.mean(pred_vals)
+                print(f' {m}')
+                print(' ', tp, fp, '\n', fn, tn)
+                print(f' Precision: {p}, Recall: {r}')
+
         print(val_loss_node_all/all_valid_idx, val_loss_net_all/all_valid_idx)
         print(f'Epoch {epoch+1}, {round(time.time() - start_time, 2)}s\n')
     
         if (best_total_val is None) or ((loss_node_all/all_train_idx) < best_total_val):
             best_total_val = loss_node_all/all_train_idx
-            torch.save(model, f"{model_type}_{num_layer}_{num_dim}_{vn}_{trans}_model.pt")
+            torch.save(model, f"{model_type}_{num_layer}_{num_dim}_{vn}_{trans}_classify.pt")
 
         with open(filepath, 'a') as f:
-            f.write(f'{epoch+1},{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},{round(time.time()-start_time, 2)}\n')
+            f.write(f'{epoch+1},{tp},{fp},{tn},{fn},{p},{r},{fsc},{m},{round(time.time()-start_time, 2)}\n')
+            # f.write(f'{epoch+1},{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},{round(time.time()-start_time, 2)}\n')
         
 else:
     all_test_idx = 0

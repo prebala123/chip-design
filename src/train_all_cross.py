@@ -23,7 +23,8 @@ from tqdm import tqdm
 from collections import Counter
 
 import sys
-sys.path.insert(1, 'data/')
+# sys.path.insert(1, 'data/')
+
 from pyg_dataset import NetlistDataset
 
 sys.path.append("models/layers/")
@@ -47,7 +48,7 @@ def compute_metrics(true_labels, predicted_labels):
 ### hyperparameter ###
 test = False # if only test but not train
 restart = False # if restart training
-reload_dataset = True # if reload already processed h_dataset
+reload_dataset = False # if reload already processed h_dataset
 
 if test:
     restart = True
@@ -61,10 +62,10 @@ trans = False #use transformer or not
 aggr = "add" #use aggregation as one of ["add", "max"]
 device = "cpu" #use cuda or cpu
 learning_rate = 0.001
-num_epochs = 500
+num_epochs = 5
 
 if not reload_dataset:
-    dataset = NetlistDataset(data_dir="data/superblue", load_pe = True, pl = True, processed = True, load_indices=None)
+    dataset = NetlistDataset(data_dir="../data/superblue", load_pe = True, pl = True, processed = False, load_indices=None)
     h_dataset = []
     for data in tqdm(dataset):
         num_instances = data.node_features.shape[0]
@@ -87,9 +88,9 @@ if not reload_dataset:
         h_data['node'].x = data.node_features
         # print(data.node_features.shape)
         h_data['net'].x = data.net_features.float()
-        print(h_data['node'].x.shape)
+        # print(h_data['node'].x.shape)
         # print(h_data['node'].x.type())
-        print(h_data['net'].x.shape)
+        # print(h_data['net'].x.shape)
         # print(h_data['net'].x.type())
 
         
@@ -102,20 +103,25 @@ if not reload_dataset:
         h_data.num_instances = data.node_features.shape[0]
         variant_data_lst = []
         
-        node_demand = data.node_demand
-        net_demand = data.net_demand
-        net_hpwl = data.net_hpwl
+        # node_demand = data.node_demand
+        # net_demand = data.net_demand
+        # net_hpwl = data.net_hpwl
+        # node_demand = (node_demand - torch.mean(node_demand)) / torch.std(node_demand)
+        # net_hpwl = (net_hpwl - torch.mean(net_hpwl)) / torch.std(net_hpwl)
+        # net_demand = (net_demand - torch.mean(net_demand))/ torch.std(net_demand)
+
+        node_congestion = data.node_congestion
+        net_congestion = data.net_congestion
         
         batch = data.batch
         num_vn = len(np.unique(batch))
         vn_node = torch.concat([global_mean_pool(h_data['node'].x, batch), 
                 global_max_pool(h_data['node'].x, batch)], dim=1)
 
-        # node_demand = (node_demand - torch.mean(node_demand)) / torch.std(node_demand)
-        # net_hpwl = (net_hpwl - torch.mean(net_hpwl)) / torch.std(net_hpwl)
-        # net_demand = (net_demand - torch.mean(net_demand))/ torch.std(net_demand)
+        
 
-        variant_data_lst.append((node_demand, net_hpwl, net_demand, batch, num_vn, vn_node)) 
+        # variant_data_lst.append((node_demand, net_hpwl, net_demand, batch, num_vn, vn_node)) 
+        variant_data_lst.append((node_congestion, net_congestion, batch, num_vn, vn_node)) 
         h_data['variant_data_lst'] = variant_data_lst
         h_dataset.append(h_data)
         
@@ -139,14 +145,14 @@ criterion_node = nn.CrossEntropyLoss()
 criterion_net = nn.CrossEntropyLoss()
 optimizer = optim.AdamW(model.parameters(), lr=learning_rate,  weight_decay=0.01)
 load_data_indices = [idx for idx in range(len(h_dataset))]
-all_train_indices, all_valid_indices, all_test_indices = load_data_indices[:7] + load_data_indices[8:11], load_data_indices[7:8], load_data_indices[7:8]
+all_train_indices, all_valid_indices, all_test_indices = load_data_indices[:10], load_data_indices[10:11], load_data_indices[11:12]
 best_total_val = None
 
 now = datetime.now()
 timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-filepath = f"baselines/{model_type}_{num_epochs}_{num_layer}_{num_dim}_{vn}_{trans}_{timestamp}_classify.csv"
+filepath = f"../results/baselines/{timestamp}__{num_epochs}_{num_layer}_{num_dim}_{vn}_classify_baseline.csv"
 with open(filepath, 'a') as f:
-    f.write('Epoch,tp,fp,tn,fn,p,r,fsc,m,Time\n')
+    f.write('Epoch,TruePositive,FalsePositive,TrueNegative,FalseNegative,Precision,Recall,Fscore,NodeTrain,NetTrain,NodeValid,NetValid,Time\n')
 
 if not test:
     start_time = time.time()
@@ -161,7 +167,8 @@ if not test:
         for data_idx in tqdm(all_train_indices):
             data = h_dataset[data_idx]
             for inner_data_idx in range(len(data.variant_data_lst)):
-                target_node, target_net_hpwl, target_net_demand, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
+                # target_node, target_net_hpwl, target_net_demand, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
+                target_node, target_net, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
                 optimizer.zero_grad()
                 data.batch = batch
                 data.num_vn = num_vn
@@ -171,7 +178,7 @@ if not test:
                 net_representation = torch.squeeze(net_representation)
     
                 loss_node = criterion_node(node_representation, target_node.to(device))
-                loss_net = criterion_net(net_representation, target_net_demand.to(device))
+                loss_net = criterion_net(net_representation, target_net.to(device))
                 loss = loss_node# + loss_net
                 loss.backward()
                 optimizer.step()   
@@ -179,13 +186,13 @@ if not test:
                 loss_node_all += loss_node.item()
                 loss_net_all += loss_net.item()
                 all_train_idx += 1
-        print(loss_node_all/all_train_idx, loss_net_all/all_train_idx)
+        print('Training Cross Entropy Loss Node: ', loss_node_all/all_train_idx, ', Net: ', loss_net_all/all_train_idx)
     
         all_valid_idx = 0
         for data_idx in tqdm(all_valid_indices):
             data = h_dataset[data_idx]
             for inner_data_idx in range(len(data.variant_data_lst)):
-                target_node, target_net_hpwl, target_net_demand, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
+                target_node, target_net, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
                 data.batch = batch
                 data.num_vn = num_vn
                 data.vn = vn_node
@@ -194,7 +201,7 @@ if not test:
                 net_representation = torch.squeeze(net_representation)
                 
                 val_loss_node = criterion_node(node_representation, target_node.to(device))
-                val_loss_net = criterion_net(net_representation, target_net_demand.to(device))
+                val_loss_net = criterion_net(net_representation, target_net.to(device))
                 val_loss_node_all +=  val_loss_node.item()
                 val_loss_net_all += val_loss_net.item()
                 all_valid_idx += 1
@@ -215,12 +222,13 @@ if not test:
                 p = tp / (tp + fp)
                 r = tp / (tp + fn)
                 fsc = (2 * p * r) / (p + r)
-                m = np.mean(pred_vals)
-                print(f' {m}')
-                print(' ', tp, fp, '\n', fn, tn)
-                print(f' Precision: {p}, Recall: {r}')
+                # m = np.mean(pred_vals)
+                # print(f' {m}')
+                # print(' ', tp, fp, '\n', fn, tn)
+                # print(f' Precision: {p}, Recall: {r}, F-score: {fsc}')
 
-        print(val_loss_node_all/all_valid_idx, val_loss_net_all/all_valid_idx)
+        print('Validation Cross Entropy Loss Node: ', val_loss_node_all/all_valid_idx, ', Net: ',  val_loss_net_all/all_valid_idx)
+        print(f'Precision: {p}, Recall: {r}, F-score: {fsc}')
         print(f'Epoch {epoch+1}, {round(time.time() - start_time, 2)}s\n')
     
         if (best_total_val is None) or ((loss_node_all/all_train_idx) < best_total_val):
@@ -228,7 +236,8 @@ if not test:
             torch.save(model, f"{model_type}_{num_layer}_{num_dim}_{vn}_{trans}_classify.pt")
 
         with open(filepath, 'a') as f:
-            f.write(f'{epoch+1},{tp},{fp},{tn},{fn},{p},{r},{fsc},{m},{round(time.time()-start_time, 2)}\n')
+            f.write(f'{epoch+1},{tp},{fp},{tn},{fn},{p},{r},{fsc},')
+            f.write(f'{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},{round(time.time()-start_time, 2)}\n')
             # f.write(f'{epoch+1},{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},{round(time.time()-start_time, 2)}\n')
         
 else:

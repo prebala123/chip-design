@@ -61,7 +61,7 @@ trans = False #use transformer or not
 aggr = "add" #use aggregation as one of ["add", "max"]
 device = "cpu" #use cuda or cpu
 learning_rate = 0.001
-num_epochs = 5
+num_epochs = 200
 
 if not reload_dataset:
     dataset = NetlistDataset(data_dir="../data/superblue", load_pe = True, pl = True, processed = reload_dataset, load_indices=None)
@@ -124,7 +124,7 @@ sys.path.append("models/layers/")
 
 h_data = h_dataset[0]
 if restart:
-    model = torch.load(f"{model_type}_{num_layer}_{num_dim}_{vn}_{trans}_model.pt")
+    model = torch.load(f"{model_type}_{num_layer}_{num_dim}_{vn}_{trans}_{prediction}.pt")
 elif prediction == 'congestion':
     model = GNN_node(num_layer, num_dim, 2, 2, node_dim = h_data['node'].x.shape[1], net_dim = h_data['net'].x.shape[1], gnn_type=model_type, vn=vn, trans=trans, aggr=aggr, JK="Normal").to(device)
 else:
@@ -139,7 +139,10 @@ else:
 
 optimizer = optim.AdamW(model.parameters(), lr=learning_rate,  weight_decay=0.01)
 load_data_indices = [idx for idx in range(len(h_dataset))]
-all_train_indices, all_valid_indices, all_test_indices = load_data_indices[:10], load_data_indices[10:11], load_data_indices[11:12]
+# all_train_indices, all_valid_indices, all_test_indices = load_data_indices[:10], load_data_indices[10:11], load_data_indices[11:12]
+all_train_indices = load_data_indices[:4] + load_data_indices[6:]
+all_valid_indices = load_data_indices[4:5]
+all_test_indices = load_data_indices[5:6]
 best_total_val = None
 
 now = datetime.now()
@@ -267,7 +270,7 @@ else:
     for data_idx in tqdm(all_test_indices):
         data = h_dataset[data_idx]
         for inner_data_idx in range(len(data.variant_data_lst)):
-            target_node, target_net_hpwl, target_net_demand, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
+            target_node_demand, target_net_demand, target_node_congestion, target_net_congestion, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
             data.batch = batch
             data.num_vn = num_vn
             data.vn = vn_node
@@ -275,10 +278,46 @@ else:
             node_representation = torch.squeeze(node_representation)
             net_representation = torch.squeeze(net_representation)
             
-            test_loss_node = criterion_node(node_representation, target_node.to(device))
-            test_loss_net = criterion_net(net_representation, target_net_demand.to(device))
+            # val_loss_node = criterion_node(node_representation, target_node.to(device))
+            # val_loss_net = criterion_net(net_representation, target_net.to(device))
+            if prediction == 'congestion':
+                test_loss_node = criterion_node(node_representation, target_node_congestion.to(device))
+                test_loss_net = criterion_net(net_representation, target_net_congestion.to(device))
+            else:
+                test_loss_node = criterion_node(node_representation, target_node_demand.to(device))
+                test_loss_net = criterion_net(net_representation, target_net_demand.to(device))
+
             test_loss_node_all +=  test_loss_node.item()
             test_loss_net_all += test_loss_net.item()
             all_test_idx += 1
-    print("avg test node demand mse: ", test_loss_node_all/all_test_idx)
-    print("avg test net demand mse: ", test_loss_net_all/all_test_idx)
+
+            if prediction == 'congestion':
+                outs = node_representation.detach().numpy()
+                pred_vals = np.array([0 if i > j else 1 for i, j in outs])
+                real_vals = target_node_congestion.numpy()
+                tp, fp, tn, fn = 0, 0, 0, 0
+                for i, j in zip(pred_vals, real_vals):
+                    if i == 1 and j == 1:
+                        tp += 1
+                    elif i == 1 and j == 0:
+                        fp += 1
+                    elif i == 0 and j == 1:
+                        fn += 1
+                    else:
+                        tn += 1
+                p = 0
+                r = 0
+                fsc = 0
+                if tp + fp > 0:
+                    p = tp / (tp + fp)
+                if tp + fn > 0:
+                    r = tp / (tp + fn)
+                if p + r > 0:
+                    fsc = (2 * p * r) / (p + r)
+    # print("avg test node demand mse: ", test_loss_node_all/all_test_idx)
+    # print("avg test net demand mse: ", test_loss_net_all/all_test_idx)
+    print('Test Loss Node: ', test_loss_node_all/all_test_idx, ', Net: ',  test_loss_net_all/all_test_idx)
+    if prediction == 'congestion':
+        print(f'Precision: {p}, Recall: {r}, F-score: {fsc}')
+        print(tp, fp)
+        print(fn, tn)

@@ -21,6 +21,7 @@ import time
 import wandb
 from tqdm import tqdm
 from collections import Counter
+import json
 
 import sys
 
@@ -52,9 +53,9 @@ reload_dataset = False # if reload already processed h_dataset
 if test:
     restart = True
 
-prediction = 'congestion' # one of ['congestion', 'demand']
+prediction = 'demand' # one of ['congestion', 'demand']
 model_type = "dehnn" #this can be one of ["dehnn", "dehnn_att", "digcn", "digat"] "dehnn_att" might need large memory usage
-num_layer = 2 #large number will cause OOM
+num_layer = 3 #large number will cause OOM
 num_dim = 16 #large number will cause OOM
 vn = True #use virtual node or not
 trans = False #use transformer or not
@@ -194,6 +195,10 @@ if not test:
         print('Training Loss Node: ', loss_node_all/all_train_idx, ', Net: ', loss_net_all/all_train_idx)
     
         all_valid_idx = 0
+
+
+        error_threshold = 10  # Set a threshold for high error instances
+        high_error_instances = []
         for data_idx in tqdm(all_valid_indices):
             data = h_dataset[data_idx]
             for inner_data_idx in range(len(data.variant_data_lst)):
@@ -204,6 +209,41 @@ if not test:
                 node_representation, net_representation = model(data, device)
                 node_representation = torch.squeeze(node_representation)
                 net_representation = torch.squeeze(net_representation)
+
+                # Find high error instances
+                if prediction == "demand":
+                    node_representation_np = node_representation.detach().cpu().numpy()
+                    net_representation_np = net_representation.detach().cpu().numpy()
+
+                    target_node_np = target_node_demand.detach().cpu().numpy()
+                    target_net_demand_np = target_net_demand.detach().cpu().numpy()
+
+                    node_error = np.abs(node_representation_np - target_node_np)
+                    net_error = np.abs(net_representation_np - target_net_demand_np)
+
+                    # Find instances where error exceeds the threshold
+                    high_error_nodes = np.where(node_error > error_threshold)[0]
+                    high_error_nets = np.where(net_error > error_threshold)[0]
+
+                    for idx in high_error_nodes:
+                        high_error_instances.append({
+                            "data_idx": data_idx,
+                            "instance_type": "node",
+                            "instance_index": int(idx),
+                            "true_value": float(target_node_np[idx]),
+                            "predicted_value": float(node_representation_np[idx]),
+                            "error": float(node_error[idx])
+                        })
+
+                    for idx in high_error_nets:
+                        high_error_instances.append({
+                            "data_idx": data_idx,
+                            "instance_type": "net",
+                            "instance_index": int(idx),
+                            "true_value": float(target_net_demand_np[idx]),
+                            "predicted_value": float(net_representation_np[idx]),
+                            "error": float(net_error[idx])
+                        })
                 
                 # val_loss_node = criterion_node(node_representation, target_node.to(device))
                 # val_loss_net = criterion_net(net_representation, target_net.to(device))
@@ -241,6 +281,11 @@ if not test:
                         r = tp / (tp + fn)
                     if p + r > 0:
                         fsc = (2 * p * r) / (p + r)
+
+        with open("high_error_instances.json", "w") as json_file:
+            json.dump(high_error_instances, json_file, indent=4)
+
+        print(f"Saved {len(high_error_instances)} high-error instances to high_error_instances.json")
 
         print('Validation Loss Node: ', val_loss_node_all/all_valid_idx, ', Net: ',  val_loss_net_all/all_valid_idx)
         if prediction == 'congestion':

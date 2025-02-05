@@ -120,7 +120,7 @@ class NetlistDataset(Dataset):
 
                 capacity = np.array([d/c if c > 0 else 0 for d, c in zip(net_demand_dictionary['demand'], net_demand_dictionary['capacity'])])
                 clf = (capacity > 0.9).astype(int)
-                net_demand = torch.Tensor(net_demand_dictionary['demand'])
+                net_demand = torch.Tensor(net_demand_dictionary['demand']).float()
                 net_congestion = torch.tensor(clf).long()
 
                 file_name = data_load_fp + '/' + 'targets.pkl'
@@ -128,7 +128,7 @@ class NetlistDataset(Dataset):
                 node_demand_dictionary = pickle.load(f)
                 f.close()
 
-                node_demand = torch.Tensor(node_demand_dictionary['demand']).flatten().long()
+                node_demand = torch.Tensor(node_demand_dictionary['demand']).flatten().float()
                 node_congestion = torch.Tensor(node_demand_dictionary['classify']).flatten().long()
                 
                 fn = data_load_fp + '/' + 'net_hpwl.pkl'

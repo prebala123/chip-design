@@ -23,7 +23,6 @@ from tqdm import tqdm
 from collections import Counter
 
 import sys
-# sys.path.insert(1, 'data/')
 
 from pyg_dataset import NetlistDataset
 
@@ -48,12 +47,12 @@ def compute_metrics(true_labels, predicted_labels):
 ### hyperparameter ###
 test = False # if only test but not train
 restart = False # if restart training
-reload_dataset = True # if reload already processed h_dataset
+reload_dataset = False # if reload already processed h_dataset
 
 if test:
     restart = True
 
-prediction = 'demand' # one of ['congestion', 'demand']
+prediction = 'congestion' # one of ['congestion', 'demand']
 model_type = "dehnn" #this can be one of ["dehnn", "dehnn_att", "digcn", "digat"] "dehnn_att" might need large memory usage
 num_layer = 2 #large number will cause OOM
 num_dim = 16 #large number will cause OOM
@@ -65,7 +64,7 @@ learning_rate = 0.001
 num_epochs = 5
 
 if not reload_dataset:
-    dataset = NetlistDataset(data_dir="../data/superblue", load_pe = True, pl = True, processed = True, load_indices=None)
+    dataset = NetlistDataset(data_dir="../data/superblue", load_pe = True, pl = True, processed = reload_dataset, load_indices=None)
     h_dataset = []
     for data in tqdm(dataset):
         num_instances = data.node_features.shape[0]
@@ -73,7 +72,6 @@ if not reload_dataset:
         data.edge_index_sink_to_net[1] = data.edge_index_sink_to_net[1] - num_instances
         data.edge_index_source_to_net[1] = data.edge_index_source_to_net[1] - num_instances
         
-        # print(data.net_features.shape)
         out_degrees = data.net_features[:, 0]
         mask = (out_degrees < 3000)
         mask_edges = mask[data.edge_index_source_to_net[1]] 
@@ -86,12 +84,7 @@ if not reload_dataset:
 
         h_data = HeteroData()
         h_data['node'].x = data.node_features
-        # print(data.node_features.shape)
         h_data['net'].x = data.net_features.float()
-        # print(h_data['node'].x.shape)
-        # print(h_data['node'].x.type())
-        # print(h_data['net'].x.shape)
-        # print(h_data['net'].x.type())
 
         
         edge_index = torch.concat([data.edge_index_sink_to_net, data.edge_index_source_to_net], dim=1)
@@ -102,36 +95,20 @@ if not reload_dataset:
         h_data['design_name'] = data['design_name']
         h_data.num_instances = data.node_features.shape[0]
         variant_data_lst = []
-        
-        # node_demand = data.node_demand
-        # net_demand = data.net_demand
-        # net_hpwl = data.net_hpwl
-        # node_demand = (node_demand - torch.mean(node_demand)) / torch.std(node_demand)
-        # net_hpwl = (net_hpwl - torch.mean(net_hpwl)) / torch.std(net_hpwl)
-        # net_demand = (net_demand - torch.mean(net_demand))/ torch.std(net_demand)
 
-        if prediction == 'congestion':
-            node_congestion = data.node_congestion
-            net_congestion = data.net_congestion
-        else:
-            node_demand = data.node_demand.float()
-            net_demand = data.net_demand.float()
-            node_demand = (node_demand - torch.mean(node_demand)) / torch.std(node_demand)
-            net_demand = (net_demand - torch.mean(net_demand))/ torch.std(net_demand)
-
+        node_congestion = data.node_congestion.long()
+        net_congestion = data.net_congestion.long()
+        node_demand = data.node_demand.float()
+        net_demand = data.net_demand.float()
+        node_demand = (node_demand - torch.mean(node_demand)) / torch.std(node_demand)
+        net_demand = (net_demand - torch.mean(net_demand))/ torch.std(net_demand)
         
         batch = data.batch
         num_vn = len(np.unique(batch))
         vn_node = torch.concat([global_mean_pool(h_data['node'].x, batch), 
                 global_max_pool(h_data['node'].x, batch)], dim=1)
 
-        
-
-        # variant_data_lst.append((node_demand, net_hpwl, net_demand, batch, num_vn, vn_node)) 
-        if prediction == 'congestion':
-            variant_data_lst.append((node_congestion, net_congestion, batch, num_vn, vn_node)) 
-        else:
-            variant_data_lst.append((node_demand, net_demand, batch, num_vn, vn_node)) 
+        variant_data_lst.append((node_demand, net_demand, node_congestion, net_congestion, batch, num_vn, vn_node)) 
         h_data['variant_data_lst'] = variant_data_lst
         h_dataset.append(h_data)
         
@@ -187,8 +164,7 @@ if not test:
         for data_idx in tqdm(all_train_indices):
             data = h_dataset[data_idx]
             for inner_data_idx in range(len(data.variant_data_lst)):
-                # target_node, target_net_hpwl, target_net_demand, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
-                target_node, target_net, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
+                target_node_demand, target_net_demand, target_node_congestion, target_net_congestion, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
                 optimizer.zero_grad()
                 data.batch = batch
                 data.num_vn = num_vn
@@ -196,10 +172,19 @@ if not test:
                 node_representation, net_representation = model(data, device)
                 node_representation = torch.squeeze(node_representation).float()
                 net_representation = torch.squeeze(net_representation).float()
-    
-                loss_node = criterion_node(node_representation, target_node.float().to(device))
-                loss_net = criterion_net(net_representation, target_net.float().to(device))
+
+                # print(node_representation)
+                # print(target_node_demand)
+
+                if prediction == 'congestion':
+                    loss_node = criterion_node(node_representation, target_node_congestion.to(device))
+                    loss_net = criterion_net(net_representation, target_net_congestion.to(device))
+                else:
+                    loss_node = criterion_node(node_representation, target_node_demand.to(device))
+                    loss_net = criterion_net(net_representation, target_net_demand.to(device))
+                
                 loss = loss_node + loss_net
+                # loss = loss_net
                 loss.backward()
                 optimizer.step()   
     
@@ -212,7 +197,7 @@ if not test:
         for data_idx in tqdm(all_valid_indices):
             data = h_dataset[data_idx]
             for inner_data_idx in range(len(data.variant_data_lst)):
-                target_node, target_net, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
+                target_node_demand, target_net_demand, target_node_congestion, target_net_congestion, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
                 data.batch = batch
                 data.num_vn = num_vn
                 data.vn = vn_node
@@ -220,8 +205,15 @@ if not test:
                 node_representation = torch.squeeze(node_representation)
                 net_representation = torch.squeeze(net_representation)
                 
-                val_loss_node = criterion_node(node_representation, target_node.to(device))
-                val_loss_net = criterion_net(net_representation, target_net.to(device))
+                # val_loss_node = criterion_node(node_representation, target_node.to(device))
+                # val_loss_net = criterion_net(net_representation, target_net.to(device))
+                if prediction == 'congestion':
+                    val_loss_node = criterion_node(node_representation, target_node_congestion.to(device))
+                    val_loss_net = criterion_net(net_representation, target_net_congestion.to(device))
+                else:
+                    val_loss_node = criterion_node(node_representation, target_node_demand.to(device))
+                    val_loss_net = criterion_net(net_representation, target_net_demand.to(device))
+
                 val_loss_node_all +=  val_loss_node.item()
                 val_loss_net_all += val_loss_net.item()
                 all_valid_idx += 1
@@ -229,7 +221,7 @@ if not test:
                 if prediction == 'congestion':
                     outs = node_representation.detach().numpy()
                     pred_vals = np.array([0 if i > j else 1 for i, j in outs])
-                    real_vals = target_node.numpy()
+                    real_vals = target_node_congestion.numpy()
                     tp, fp, tn, fn = 0, 0, 0, 0
                     for i, j in zip(pred_vals, real_vals):
                         if i == 1 and j == 1:
@@ -240,13 +232,21 @@ if not test:
                             fn += 1
                         else:
                             tn += 1
-                    p = tp / (tp + fp)
-                    r = tp / (tp + fn)
-                    fsc = (2 * p * r) / (p + r)
+                    p = 0
+                    r = 0
+                    fsc = 0
+                    if tp + fp > 0:
+                        p = tp / (tp + fp)
+                    if tp + fn > 0:
+                        r = tp / (tp + fn)
+                    if p + r > 0:
+                        fsc = (2 * p * r) / (p + r)
 
         print('Validation Loss Node: ', val_loss_node_all/all_valid_idx, ', Net: ',  val_loss_net_all/all_valid_idx)
         if prediction == 'congestion':
             print(f'Precision: {p}, Recall: {r}, F-score: {fsc}')
+            print(tp, fp)
+            print(fn, tn)
         print(f'Epoch {epoch+1}, {round(time.time() - start_time, 2)}s\n')
     
         if (best_total_val is None) or ((loss_node_all/all_train_idx) < best_total_val):

@@ -64,7 +64,7 @@ learning_rate = 0.001
 num_epochs = 200
 
 if not reload_dataset:
-    dataset = NetlistDataset(data_dir="../data/superblue", load_pe = True, pl = True, processed = reload_dataset, load_indices=None)
+    dataset = NetlistDataset(data_dir="../data/superblue", load_pd = False, load_pe = True, pl = True, processed = reload_dataset, load_indices=None)
     h_dataset = []
     for data in tqdm(dataset):
         num_instances = data.node_features.shape[0]
@@ -85,6 +85,7 @@ if not reload_dataset:
         h_data = HeteroData()
         h_data['node'].x = data.node_features
         h_data['net'].x = data.net_features.float()
+        print(data.node_features.shape)
 
         
         edge_index = torch.concat([data.edge_index_sink_to_net, data.edge_index_source_to_net], dim=1)
@@ -147,10 +148,12 @@ best_total_val = None
 
 now = datetime.now()
 timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-filepath = f"../results/baselines/{timestamp}__{num_epochs}_{num_layer}_{num_dim}_{vn}_{prediction}_baseline.csv"
+filepath = f"../results/baselines/{timestamp}__{num_epochs}_{num_layer}_{num_dim}_{vn}_{prediction}_pd.csv"
 with open(filepath, 'a') as f:
     if prediction == 'congestion':
-        f.write('Epoch,TruePositive,FalsePositive,TrueNegative,FalseNegative,Precision,Recall,Fscore,NodeTrain,NetTrain,NodeValid,NetValid,Time\n')
+        f.write('Epoch,TruePositiveNode,FalsePositiveNode,TrueNegativeNode,FalseNegativeNode,PrecisionNode,RecallNode,FscoreNode,')
+        f.write('TruePositiveNet,FalsePositiveNet,TrueNegativeNet,FalseNegativeNet,PrecisionNet,RecallNet,FscoreNet,')
+        f.write('NodeTrain,NetTrain,NodeValid,NetValid,Time\n')
     else:
         f.write('Epoch,NodeTrain,NetTrain,NodeValid,NetValid,Time\n')
 
@@ -186,8 +189,8 @@ if not test:
                     loss_node = criterion_node(node_representation, target_node_demand.to(device))
                     loss_net = criterion_net(net_representation, target_net_demand.to(device))
                 
-                loss = loss_node + loss_net
-                # loss = loss_net
+                # loss = loss_node + loss_net
+                loss = loss_net
                 loss.backward()
                 optimizer.step()   
     
@@ -222,9 +225,16 @@ if not test:
                 all_valid_idx += 1
 
                 if prediction == 'congestion':
-                    outs = node_representation.detach().numpy()
+                    if device == 'cpu':
+                        outs = node_representation.detach().numpy()
+                        outs_net = net_representation.detach().numpy()
+                    else:
+                        outs = node_representation.cpu().detach().numpy()
+                        outs_net = net_representation.detach().numpy()
                     pred_vals = np.array([0 if i > j else 1 for i, j in outs])
                     real_vals = target_node_congestion.numpy()
+                    pred_vals_net = np.array([0 if i > j else 1 for i, j in outs_net])
+                    real_vals_net = target_net_congestion.numpy()
                     tp, fp, tn, fn = 0, 0, 0, 0
                     for i, j in zip(pred_vals, real_vals):
                         if i == 1 and j == 1:
@@ -245,20 +255,43 @@ if not test:
                     if p + r > 0:
                         fsc = (2 * p * r) / (p + r)
 
+                    tp_net, fp_net, tn_net, fn_net = 0, 0, 0, 0
+                    for i, j in zip(pred_vals_net, real_vals_net):
+                        if i == 1 and j == 1:
+                            tp_net += 1
+                        elif i == 1 and j == 0:
+                            fp_net += 1
+                        elif i == 0 and j == 1:
+                            fn_net += 1
+                        else:
+                            tn_net += 1
+                    p_net = 0
+                    r_net = 0
+                    fsc_net = 0
+                    if tp_net + fp_net > 0:
+                        p_net = tp_net / (tp_net + fp_net)
+                    if tp_net + fn_net > 0:
+                        r_net = tp_net / (tp_net + fn_net)
+                    if p_net + r_net > 0:
+                        fsc_net = (2 * p_net * r_net) / (p_net + r_net)
+
         print('Validation Loss Node: ', val_loss_node_all/all_valid_idx, ', Net: ',  val_loss_net_all/all_valid_idx)
         if prediction == 'congestion':
-            print(f'Precision: {p}, Recall: {r}, F-score: {fsc}')
+            print(f'Node Precision: {p}, Recall: {r}, F-score: {fsc}')
             print(tp, fp)
             print(fn, tn)
+            print(f'Net Precision: {p_net}, Recall: {r_net}, F-score: {fsc_net}')
+            print(tp_net, fp_net)
+            print(fn_net, tn_net)
         print(f'Epoch {epoch+1}, {round(time.time() - start_time, 2)}s\n')
     
         if (best_total_val is None) or ((loss_node_all/all_train_idx) < best_total_val):
             best_total_val = loss_node_all/all_train_idx
-            torch.save(model, f"{model_type}_{num_layer}_{num_dim}_{vn}_{trans}_{prediction}.pt")
+            torch.save(model, f"{timestamp}_{model_type}_{num_layer}_{num_dim}_{vn}_{trans}_{prediction}.pt")
 
         with open(filepath, 'a') as f:
             if prediction == 'congestion':
-                f.write(f'{epoch+1},{tp},{fp},{tn},{fn},{p},{r},{fsc},')
+                f.write(f'{epoch+1},{tp},{fp},{tn},{fn},{p},{r},{fsc},{tp_net},{fp_net},{tn_net},{fn_net},{p_net},{r_net},{fsc_net},')
                 f.write(f'{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},{round(time.time()-start_time, 2)}\n')
             else:
                 f.write(f'{epoch+1},{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},{round(time.time()-start_time, 2)}\n')
@@ -292,7 +325,10 @@ else:
             all_test_idx += 1
 
             if prediction == 'congestion':
-                outs = node_representation.detach().numpy()
+                if device == 'cpu':
+                    outs = node_representation.detach().numpy()
+                else:
+                    outs = node_representation.cpu().detach().numpy()
                 pred_vals = np.array([0 if i > j else 1 for i, j in outs])
                 real_vals = target_node_congestion.numpy()
                 tp, fp, tn, fn = 0, 0, 0, 0

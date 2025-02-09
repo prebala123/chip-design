@@ -1,4 +1,4 @@
-# Feature Engineering for Chip Design
+# Chip Design and Graph Representation
 
 Chip design optimizations have become increasingly challenging due to rising complexity, resulting in recent research towards machine learning methods and other techniques to improve the design process. One such example of a machine learning technique is the DE-HNN model, which uses a directed hyper-graph to improve the outcome of place-and-route tools, such as by modeling the congestion in a given netlist. We build upon the results and architecture of this model to identify specific features in a netlist that are highly related to congestion through exploratory analyses and the implementation of explainable AI tools, such as SHAP (SHapley Additive exPlanations) values. In addition, we propose new approaches to the partitioning process using causal analysis techniques.  We also explore alternatives to the data processing step, such as undersampling and oversampling, to improve the model’s performance on outliers. Finally, we consider reframing the model architecture as a classification problem to improve the identification of congested locations.
 

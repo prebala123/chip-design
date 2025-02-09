@@ -1,0 +1,15 @@
+{
+    "test": false,
+    "restart": false,
+    "reload_dataset": false,
+    "prediction": "congestion",
+    "model_type": "dehnn",
+    "num_layer": 2,
+    "num_dim": 16,
+    "vn": true,
+    "trans": false,
+    "aggr": "add",
+    "device": "cpu",
+    "learning_rate": 0.001,
+    "num_epochs": 5
+}

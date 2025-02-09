@@ -90,6 +90,7 @@ class NetlistDataset(Dataset):
                 example.net_degrees = torch.tensor(d['net_degrees'])
                 
                 example.x = torch.cat([example.x, example.cell_degrees.unsqueeze(dim = 1)], dim = 1)
+                # example.x = example.cell_degrees.unsqueeze(dim = 1)
                 example.x_net = example.net_degrees.unsqueeze(dim = 1)
 
                 file_name = data_load_fp + '/' + 'metis_part_dict.pkl'

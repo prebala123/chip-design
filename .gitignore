@@ -6,4 +6,6 @@ de_hnn_tx/
 older_version/
 *.pkl
 *.zip
+*.pyc
+.DS_Store
 .gitignore

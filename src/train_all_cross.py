@@ -132,7 +132,7 @@ best_total_val = None
 # Create csv file to save training metrics
 now = datetime.now()
 timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-filepath = f"../results/baselines/{timestamp}__{num_epochs}_{num_layer}_{num_dim}_{vn}_{prediction}_cellfeats.csv"
+filepath = f"../results/baselines/{timestamp}__{num_epochs}_{num_layer}_{num_dim}_{vn}_{prediction}_baseline.csv"
 with open(filepath, 'a') as f:
     if prediction == 'congestion':
         f.write('Epoch,TruePositiveNode,FalsePositiveNode,TrueNegativeNode,FalseNegativeNode,PrecisionNode,RecallNode,FscoreNode,')

@@ -59,13 +59,35 @@ class NetlistDataset(Dataset):
                 dictionary = pickle.load(f)
                 f.close()
         
+                i_idx = dictionary['instance_idx']
                 instance_idx = torch.Tensor(dictionary['instance_idx']).unsqueeze(dim = 1).long()
                 net_idx = torch.Tensor(dictionary['net_idx']) + num_instances
                 net_idx = net_idx.unsqueeze(dim = 1).long()
                 
                 edge_attr = torch.Tensor(dictionary['edge_attr']).float().unsqueeze(dim = 1).float()
                 edge_index = torch.cat((instance_idx, net_idx), dim = 1)
-                edge_dir = dictionary['edge_dir']
+
+                file_name = data_load_fp + '/' + 'net_demand_capacity.pkl'
+                f = open(file_name, 'rb')
+                net_demand_dictionary = pickle.load(f)
+                f.close()
+
+                net_demand_arr = np.array(net_demand_dictionary['demand'])
+                med = np.median(net_demand_arr)
+                q1 = np.quantile(net_demand_arr, 0.25)
+                q3 = np.quantile(net_demand_arr, 0.75)
+                iqr = q3 - q1
+                bound = med + 5 * iqr
+                outlier_idx = net_demand_arr <= bound
+                remove_idx = np.array(range(num_instances, num_instances + num_nets))[outlier_idx]
+
+                edge_filter = np.isin(edge_index[:, 1], (remove_idx))
+                edge_index = edge_index[edge_filter]
+
+                real_nets = np.array(torch.unique(edge_index[:, 1]))
+                mask_nets = np.isin(range(num_instances, num_instances + num_nets), real_nets)
+
+                edge_dir = np.array(dictionary['edge_dir'])[edge_filter]
                 v_drive_idx = [idx for idx in range(len(edge_dir)) if edge_dir[idx] == 1]
                 v_sink_idx = [idx for idx in range(len(edge_dir)) if edge_dir[idx] == 0] 
                 edge_index_source_to_net = edge_index[v_drive_idx]
@@ -124,11 +146,27 @@ class NetlistDataset(Dataset):
                 net_demand = torch.Tensor(net_demand_dictionary['demand']).float()
                 net_congestion = torch.tensor(clf).long()
 
+                
+
                 file_name = data_load_fp + '/' + 'targets.pkl'
                 f = open(file_name, 'rb')
                 node_demand_dictionary = pickle.load(f)
                 f.close()
 
+                # demand = node_demand_dictionary['demand']
+                # med = np.median(demand)
+                # q1 = np.quantile(demand, 0.25)
+                # q3 = np.quantile(demand, 0.75)
+                # iqr = q3 - q1
+                # bound = med + 5 * iqr
+                # outlier_idx = demand > bound
+
+                # dead_node = ~np.isin(range(num_instances), i_idx)
+                # remove_idx = np.array(range(num_instances))[dead_node | outlier_idx]
+                # mask = dead_node | outlier_idx
+            
+
+                # node_demand = torch.Tensor(node_demand_dictionary['demand'][~mask]).flatten().float()
                 node_demand = torch.Tensor(node_demand_dictionary['demand']).flatten().float()
                 node_congestion = torch.Tensor(node_demand_dictionary['classify']).flatten().long()
                 
@@ -164,11 +202,15 @@ class NetlistDataset(Dataset):
         
                     example.x = torch.cat([example.x, pd, neighbor_list], dim = 1)
 
+                # mask = torch.from_numpy(mask).bool()
+                # example.x = example.x[~mask]
+
                 data = Data(
                         node_features = example.x, 
                         net_features = example.x_net, 
                         edge_index_sink_to_net = edge_index_sink_to_net, 
                         edge_index_source_to_net = edge_index_source_to_net, 
+                        mask = mask_nets,
                         node_demand = node_demand, 
                         net_demand = net_demand,
                         node_congestion = node_congestion,
@@ -178,6 +220,7 @@ class NetlistDataset(Dataset):
                         num_vn = example.num_vn,
                         pos_lst = pos_lst
                     )
+                
                 
                 data_save_fp = os.path.join(data_load_fp, 'pyg_data.pkl')
                 torch.save(data, data_save_fp)

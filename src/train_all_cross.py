@@ -81,8 +81,8 @@ if not reload_dataset:
         net_congestion = data.net_congestion.long()
         node_demand = data.node_demand.float()
         net_demand = data.net_demand.float()
-        node_demand = (node_demand - torch.mean(node_demand)) / torch.std(node_demand)
-        net_demand = (net_demand - torch.mean(net_demand))/ torch.std(net_demand)
+        # node_demand = (node_demand - torch.mean(node_demand)) / torch.std(node_demand)
+        # net_demand = (net_demand - torch.mean(net_demand))/ torch.std(net_demand)
         
         # Create and save processed data
         batch = data.batch
@@ -90,7 +90,7 @@ if not reload_dataset:
         vn_node = torch.concat([global_mean_pool(h_data['node'].x, batch), 
                 global_max_pool(h_data['node'].x, batch)], dim=1)
 
-        variant_data_lst.append((node_demand, net_demand, node_congestion, net_congestion, batch, num_vn, vn_node)) 
+        variant_data_lst.append((node_demand, net_demand, node_congestion, net_congestion, batch, num_vn, vn_node, data.mask)) 
         h_data['variant_data_lst'] = variant_data_lst
         h_dataset.append(h_data)
         
@@ -122,7 +122,7 @@ else:
     criterion_net = nn.MSELoss()
 
 # Training, validation, and test split
-optimizer = optim.AdamW(model.parameters(), lr=learning_rate,  weight_decay=0.01)
+optimizer = optim.AdamW(model.parameters(), lr=learning_rate,  weight_decay=0.001)
 load_data_indices = [idx for idx in range(len(h_dataset))]
 all_train_indices = load_data_indices[:4] + load_data_indices[6:]
 all_valid_indices = load_data_indices[4:5]
@@ -132,14 +132,14 @@ best_total_val = None
 # Create csv file to save training metrics
 now = datetime.now()
 timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-filepath = f"../results/baselines/{timestamp}__{num_epochs}_{num_layer}_{num_dim}_{vn}_{prediction}_cellfeats.csv"
+filepath = f"../results/baselines/{timestamp}__{num_epochs}_{num_layer}_{num_dim}_{vn}_{prediction}_baseline.csv"
 with open(filepath, 'a') as f:
     if prediction == 'congestion':
         f.write('Epoch,TruePositiveNode,FalsePositiveNode,TrueNegativeNode,FalseNegativeNode,PrecisionNode,RecallNode,FscoreNode,')
         f.write('TruePositiveNet,FalsePositiveNet,TrueNegativeNet,FalseNegativeNet,PrecisionNet,RecallNet,FscoreNet,')
         f.write('NodeTrain,NetTrain,NodeValid,NetValid,Time\n')
     else:
-        f.write('Epoch,NodeTrain,NetTrain,NodeValid,NetValid,Time\n')
+        f.write('Epoch,NodeTrain,NetTrain,NodeValid,NetValid,NodeTest,NetTest,Time\n')
 
 if not test:
     start_time = time.time()
@@ -149,12 +149,15 @@ if not test:
         loss_net_all = 0
         val_loss_node_all = 0
         val_loss_net_all = 0
+        test_loss_node_all = 0
+        test_loss_net_all = 0
         
         all_train_idx = 0
         for data_idx in tqdm(all_train_indices):
             data = h_dataset[data_idx]
             for inner_data_idx in range(len(data.variant_data_lst)):
-                target_node_demand, target_net_demand, target_node_congestion, target_net_congestion, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
+                target_node_demand, target_net_demand, target_node_congestion, target_net_congestion, batch, num_vn, vn_node, mask = data.variant_data_lst[inner_data_idx]
+                target_net_demand = target_net_demand[mask]
                 optimizer.zero_grad()
                 data.batch = batch
                 data.num_vn = num_vn
@@ -163,7 +166,7 @@ if not test:
                 # Forward pass training data through model
                 node_representation, net_representation = model(data, device)
                 node_representation = torch.squeeze(node_representation).float()
-                net_representation = torch.squeeze(net_representation).float()
+                net_representation = torch.squeeze(net_representation).float()[mask]
 
                 if prediction == 'congestion':
                     loss_node = criterion_node(node_representation, target_node_congestion.to(device))
@@ -186,13 +189,14 @@ if not test:
         for data_idx in tqdm(all_valid_indices):
             data = h_dataset[data_idx]
             for inner_data_idx in range(len(data.variant_data_lst)):
-                target_node_demand, target_net_demand, target_node_congestion, target_net_congestion, batch, num_vn, vn_node = data.variant_data_lst[inner_data_idx]
+                target_node_demand, target_net_demand, target_node_congestion, target_net_congestion, batch, num_vn, vn_node, mask = data.variant_data_lst[inner_data_idx]
+                target_net_demand = target_net_demand[mask]
                 data.batch = batch
                 data.num_vn = num_vn
                 data.vn = vn_node
                 node_representation, net_representation = model(data, device)
                 node_representation = torch.squeeze(node_representation)
-                net_representation = torch.squeeze(net_representation)
+                net_representation = torch.squeeze(net_representation)[mask]
                 
                 # Check training results on validation set
                 if prediction == 'congestion':
@@ -258,8 +262,34 @@ if not test:
                     if p_net + r_net > 0:
                         fsc_net = (2 * p_net * r_net) / (p_net + r_net)
 
+        all_test_idx = 0
+        for data_idx in tqdm(all_test_indices):
+            data = h_dataset[data_idx]
+            for inner_data_idx in range(len(data.variant_data_lst)):
+                target_node_demand, target_net_demand, target_node_congestion, target_net_congestion, batch, num_vn, vn_node, mask = data.variant_data_lst[inner_data_idx]
+                target_net_demand = target_net_demand[mask]
+                data.batch = batch
+                data.num_vn = num_vn
+                data.vn = vn_node
+                node_representation, net_representation = model(data, device)
+                node_representation = torch.squeeze(node_representation)
+                net_representation = torch.squeeze(net_representation)[mask]
+                
+                # Check training results on validation set
+                if prediction == 'congestion':
+                    test_loss_node = criterion_node(node_representation, target_node_congestion.to(device))
+                    test_loss_net = criterion_net(net_representation, target_net_congestion.to(device))
+                else:
+                    test_loss_node = criterion_node(node_representation, target_node_demand.to(device))
+                    test_loss_net = criterion_net(net_representation, target_net_demand.to(device))
+
+                test_loss_node_all +=  test_loss_node.item()
+                test_loss_net_all += test_loss_net.item()
+                all_test_idx += 1
+
         # Save metrics for this epoch
         print('Validation Loss Node: ', val_loss_node_all/all_valid_idx, ', Net: ',  val_loss_net_all/all_valid_idx)
+        print('Test Loss Node:       ', test_loss_node_all/all_test_idx, ', Net: ',  test_loss_net_all/all_test_idx)
         if prediction == 'congestion':
             print(f'Node Precision: {p}, Recall: {r}, F-score: {fsc}')
             print(tp, fp)
@@ -278,7 +308,8 @@ if not test:
                 f.write(f'{epoch+1},{tp},{fp},{tn},{fn},{p},{r},{fsc},{tp_net},{fp_net},{tn_net},{fn_net},{p_net},{r_net},{fsc_net},')
                 f.write(f'{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},{round(time.time()-start_time, 2)}\n')
             else:
-                f.write(f'{epoch+1},{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},{round(time.time()-start_time, 2)}\n')
+                f.write(f'{epoch+1},{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},')
+                f.write(f'{test_loss_node_all/all_test_idx},{test_loss_net_all/all_test_idx},{round(time.time()-start_time, 2)}\n')
         
 else:
     # Test model without training

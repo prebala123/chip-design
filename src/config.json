@@ -2,7 +2,7 @@
     "test": false,
     "restart": false,
     "reload_dataset": false,
-    "prediction": "congestion",
+    "prediction": "demand",
     "model_type": "dehnn",
     "num_layer": 2,
     "num_dim": 16,
@@ -10,6 +10,6 @@
     "trans": false,
     "aggr": "add",
     "device": "cpu",
-    "learning_rate": 0.001,
-    "num_epochs": 5
+    "learning_rate": 0.0005,
+    "num_epochs": 100
 }

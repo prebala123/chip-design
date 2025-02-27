@@ -73,21 +73,21 @@ class NetlistDataset(Dataset):
                 f.close()
 
                 net_demand_arr = np.array(net_demand_dictionary['demand'])
-                med = np.median(net_demand_arr)
                 q1 = np.quantile(net_demand_arr, 0.25)
                 q3 = np.quantile(net_demand_arr, 0.75)
                 iqr = q3 - q1
-                bound = med + 5 * iqr
+                bound = q3 + 5 * iqr
                 outlier_idx = net_demand_arr <= bound
-                remove_idx = np.array(range(num_instances, num_instances + num_nets))[outlier_idx]
+                # remove_idx = np.array(range(num_instances, num_instances + num_nets))[outlier_idx]
 
-                edge_filter = np.isin(edge_index[:, 1], (remove_idx))
-                edge_index = edge_index[edge_filter]
+                # edge_filter = np.isin(edge_index[:, 1], (remove_idx))
+                # edge_index = edge_index[edge_filter]
 
                 real_nets = np.array(torch.unique(edge_index[:, 1]))
-                mask_nets = np.isin(range(num_instances, num_instances + num_nets), real_nets)
+                dead_nets = np.isin(range(num_instances, num_instances + num_nets), real_nets)
+                mask_nets = outlier_idx & dead_nets
 
-                edge_dir = np.array(dictionary['edge_dir'])[edge_filter]
+                edge_dir = np.array(dictionary['edge_dir'])#[edge_filter]
                 v_drive_idx = [idx for idx in range(len(edge_dir)) if edge_dir[idx] == 1]
                 v_sink_idx = [idx for idx in range(len(edge_dir)) if edge_dir[idx] == 0] 
                 edge_index_source_to_net = edge_index[v_drive_idx]

@@ -1,7 +1,7 @@
 {
     "test": false,
     "restart": false,
-    "reload_dataset": false,
+    "reload_dataset": true,
     "prediction": "demand",
     "model_type": "dehnn",
     "num_layer": 2,

@@ -67,7 +67,7 @@ if not reload_dataset:
         h_data = HeteroData()
         h_data['node'].x = data.node_features
         h_data['net'].x = data.net_features.float()
-        # print(data.node_features.shape)
+        print(data.node_features.shape)
 
         # Create hypergraph structure
         edge_index = torch.concat([data.edge_index_sink_to_net, data.edge_index_source_to_net], dim=1)
@@ -111,18 +111,12 @@ sys.path.append("models/layers/")
 h_data = h_dataset[0]
 if restart:
     model = torch.load(f"{model_type}_{num_layer}_{num_dim}_{vn}_{trans}_{prediction}.pt")
-elif prediction == 'congestion':
-    model = GNN_node(num_layer, num_dim, 2, 2, node_dim = h_data['node'].x.shape[1], net_dim = h_data['net'].x.shape[1], gnn_type=model_type, vn=vn, trans=trans, aggr=aggr, JK="Normal").to(device)
 else:
     model = GNN_node(num_layer, num_dim, 1, 1, node_dim = h_data['node'].x.shape[1], net_dim = h_data['net'].x.shape[1], gnn_type=model_type, vn=vn, trans=trans, aggr=aggr, JK="Normal").to(device)
 
 # Create loss function
-if prediction == 'congestion':
-    criterion_node = nn.CrossEntropyLoss()
-    criterion_net = nn.CrossEntropyLoss()
-else:
-    criterion_node = nn.MSELoss()
-    criterion_net = nn.MSELoss()
+criterion_node = nn.MSELoss()
+criterion_net = nn.MSELoss()
 
 # Training, validation, and test split
 optimizer = optim.AdamW(model.parameters(), lr=learning_rate,  weight_decay=0.001)
@@ -137,12 +131,9 @@ now = datetime.now()
 timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
 filepath = f"../results/baselines/{timestamp}__{num_epochs}_{num_layer}_{num_dim}_{vn}_{prediction}_baseline.csv"
 with open(filepath, 'a') as f:
-    if prediction == 'congestion':
-        f.write('Epoch,TruePositiveNode,FalsePositiveNode,TrueNegativeNode,FalseNegativeNode,PrecisionNode,RecallNode,FscoreNode,')
-        f.write('TruePositiveNet,FalsePositiveNet,TrueNegativeNet,FalseNegativeNet,PrecisionNet,RecallNet,FscoreNet,')
-        f.write('NodeTrain,NetTrain,NodeValid,NetValid,Time\n')
-    else:
-        f.write('Epoch,NodeTrain,NetTrain,NodeValid,NetValid,NodeTest,NetTest,Time\n')
+    f.write('Epoch,Train_RMSE,Valid_RMSE,Test_RMSE,')
+    f.write('Train_MAE,Valid_MAE,Test_MAE,')
+    f.write('Train_Pearson,Valid_Pearson,Test_Pearson,Time\n')
 
 if not test:
     start_time = time.time()
@@ -154,13 +145,21 @@ if not test:
         val_loss_net_all = 0
         test_loss_node_all = 0
         test_loss_net_all = 0
+
+        train_mae = 0
+        val_mae = 0
+        test_mae = 0
+
+        train_pearson = 0
+        val_pearson = 0
+        test_pearson = 0
         
         all_train_idx = 0
         for data_idx in tqdm(all_train_indices):
             data = h_dataset[data_idx]
             for inner_data_idx in range(len(data.variant_data_lst)):
                 target_node_demand, target_net_demand, target_node_congestion, target_net_congestion, batch, num_vn, vn_node, mask = data.variant_data_lst[inner_data_idx]
-                target_net_demand = target_net_demand[mask]
+                # target_net_demand = target_net_demand[mask]
                 optimizer.zero_grad()
                 data.batch = batch
                 data.num_vn = num_vn
@@ -169,14 +168,10 @@ if not test:
                 # Forward pass training data through model
                 node_representation, net_representation = model(data, device)
                 node_representation = torch.squeeze(node_representation).float()
-                net_representation = torch.squeeze(net_representation).float()[mask]
+                net_representation = torch.squeeze(net_representation).float()#[mask]
 
-                if prediction == 'congestion':
-                    loss_node = criterion_node(node_representation, target_node_congestion.to(device))
-                    loss_net = criterion_net(net_representation, target_net_congestion.to(device))
-                else:
-                    loss_node = criterion_node(node_representation, target_node_demand.to(device))
-                    loss_net = criterion_net(net_representation, target_net_demand.to(device))
+                loss_node = criterion_node(node_representation, target_node_demand.to(device))
+                loss_net = criterion_net(net_representation, target_net_demand.to(device))
                 
                 # Backpropagate the loss
                 loss = loss_net
@@ -185,123 +180,75 @@ if not test:
     
                 loss_node_all += loss_node.item()
                 loss_net_all += loss_net.item()
+
+                train_mae += mean_absolute_error(net_representation.detach().cpu().numpy(), target_net_demand.detach().cpu().numpy())
+                coef, pval = pearsonr(net_representation.detach().cpu().numpy(), target_net_demand.detach().cpu().numpy())
+                train_pearson += coef
+
                 all_train_idx += 1
 
                 
-        print('Training Loss Node: ', loss_node_all/all_train_idx, ', Net: ', loss_net_all/all_train_idx)
+        # print('Training Loss Node: ', loss_node_all/all_train_idx, ', Net: ', loss_net_all/all_train_idx)
+        print('Train RMSE: ', np.sqrt(loss_net_all/all_train_idx), ', Train MAE: ', train_mae/all_train_idx, ', Train Pearson: ', train_pearson/all_train_idx)
     
         all_valid_idx = 0
         for data_idx in tqdm(all_valid_indices):
             data = h_dataset[data_idx]
             for inner_data_idx in range(len(data.variant_data_lst)):
                 target_node_demand, target_net_demand, target_node_congestion, target_net_congestion, batch, num_vn, vn_node, mask = data.variant_data_lst[inner_data_idx]
-                target_net_demand = target_net_demand[mask]
+                # target_net_demand = target_net_demand[mask]
                 data.batch = batch
                 data.num_vn = num_vn
                 data.vn = vn_node
                 node_representation, net_representation = model(data, device)
                 node_representation = torch.squeeze(node_representation)
-                net_representation = torch.squeeze(net_representation)[mask]
+                net_representation = torch.squeeze(net_representation)#[mask]
                 
                 # Check training results on validation set
-                if prediction == 'congestion':
-                    val_loss_node = criterion_node(node_representation, target_node_congestion.to(device))
-                    val_loss_net = criterion_net(net_representation, target_net_congestion.to(device))
-                else:
-                    val_loss_node = criterion_node(node_representation, target_node_demand.to(device))
-                    val_loss_net = criterion_net(net_representation, target_net_demand.to(device))
+                val_loss_node = criterion_node(node_representation, target_node_demand.to(device))
+                val_loss_net = criterion_net(net_representation, target_net_demand.to(device))
 
                 val_loss_node_all +=  val_loss_node.item()
                 val_loss_net_all += val_loss_net.item()
+
+                val_mae += mean_absolute_error(net_representation.detach().cpu().numpy(), target_net_demand.detach().cpu().numpy())
+                coef, pval = pearsonr(net_representation.detach().cpu().numpy(), target_net_demand.detach().cpu().numpy())
+                val_pearson += coef
+
                 all_valid_idx += 1
-
-                # Calculate precision, recall, and f score metrics to evaluate training
-                if prediction == 'congestion':
-                    if device == 'cpu':
-                        outs = node_representation.detach().numpy()
-                        outs_net = net_representation.detach().numpy()
-                    else:
-                        outs = node_representation.cpu().detach().numpy()
-                        outs_net = net_representation.detach().numpy()
-                    pred_vals = np.array([0 if i > j else 1 for i, j in outs])
-                    real_vals = target_node_congestion.numpy()
-                    pred_vals_net = np.array([0 if i > j else 1 for i, j in outs_net])
-                    real_vals_net = target_net_congestion.numpy()
-                    tp, fp, tn, fn = 0, 0, 0, 0
-                    for i, j in zip(pred_vals, real_vals):
-                        if i == 1 and j == 1:
-                            tp += 1
-                        elif i == 1 and j == 0:
-                            fp += 1
-                        elif i == 0 and j == 1:
-                            fn += 1
-                        else:
-                            tn += 1
-                    p = 0
-                    r = 0
-                    fsc = 0
-                    if tp + fp > 0:
-                        p = tp / (tp + fp)
-                    if tp + fn > 0:
-                        r = tp / (tp + fn)
-                    if p + r > 0:
-                        fsc = (2 * p * r) / (p + r)
-
-                    tp_net, fp_net, tn_net, fn_net = 0, 0, 0, 0
-                    for i, j in zip(pred_vals_net, real_vals_net):
-                        if i == 1 and j == 1:
-                            tp_net += 1
-                        elif i == 1 and j == 0:
-                            fp_net += 1
-                        elif i == 0 and j == 1:
-                            fn_net += 1
-                        else:
-                            tn_net += 1
-                    p_net = 0
-                    r_net = 0
-                    fsc_net = 0
-                    if tp_net + fp_net > 0:
-                        p_net = tp_net / (tp_net + fp_net)
-                    if tp_net + fn_net > 0:
-                        r_net = tp_net / (tp_net + fn_net)
-                    if p_net + r_net > 0:
-                        fsc_net = (2 * p_net * r_net) / (p_net + r_net)
 
         all_test_idx = 0
         for data_idx in tqdm(all_test_indices):
             data = h_dataset[data_idx]
             for inner_data_idx in range(len(data.variant_data_lst)):
                 target_node_demand, target_net_demand, target_node_congestion, target_net_congestion, batch, num_vn, vn_node, mask = data.variant_data_lst[inner_data_idx]
-                target_net_demand = target_net_demand[mask]
+                # target_net_demand = target_net_demand[mask]
                 data.batch = batch
                 data.num_vn = num_vn
                 data.vn = vn_node
                 node_representation, net_representation = model(data, device)
                 node_representation = torch.squeeze(node_representation)
-                net_representation = torch.squeeze(net_representation)[mask]
+                net_representation = torch.squeeze(net_representation)#[mask]
                 
-                # Check training results on validation set
-                if prediction == 'congestion':
-                    test_loss_node = criterion_node(node_representation, target_node_congestion.to(device))
-                    test_loss_net = criterion_net(net_representation, target_net_congestion.to(device))
-                else:
-                    test_loss_node = criterion_node(node_representation, target_node_demand.to(device))
-                    test_loss_net = criterion_net(net_representation, target_net_demand.to(device))
+                # Check training results on validation set           
+                test_loss_node = criterion_node(node_representation, target_node_demand.to(device))
+                test_loss_net = criterion_net(net_representation, target_net_demand.to(device))
 
                 test_loss_node_all +=  test_loss_node.item()
                 test_loss_net_all += test_loss_net.item()
+
+                test_mae += mean_absolute_error(net_representation.detach().cpu().numpy(), target_net_demand.detach().cpu().numpy())
+                coef, pval = pearsonr(net_representation.detach().cpu().numpy(), target_net_demand.detach().cpu().numpy())
+                test_pearson += coef
+
                 all_test_idx += 1
 
         # Save metrics for this epoch
-        print('Validation Loss Node: ', val_loss_node_all/all_valid_idx, ', Net: ',  val_loss_net_all/all_valid_idx)
-        print('Test Loss Node:       ', test_loss_node_all/all_test_idx, ', Net: ',  test_loss_net_all/all_test_idx)
-        if prediction == 'congestion':
-            print(f'Node Precision: {p}, Recall: {r}, F-score: {fsc}')
-            print(tp, fp)
-            print(fn, tn)
-            print(f'Net Precision: {p_net}, Recall: {r_net}, F-score: {fsc_net}')
-            print(tp_net, fp_net)
-            print(fn_net, tn_net)
+        # print('Validation Loss Node: ', val_loss_node_all/all_valid_idx, ', Net: ',  val_loss_net_all/all_valid_idx)
+        # print('Test Loss Node:       ', test_loss_node_all/all_test_idx, ', Net: ',  test_loss_net_all/all_test_idx)
+        print('Valid RMSE: ', np.sqrt(val_loss_net_all/all_valid_idx), ', Valid MAE: ', val_mae/all_valid_idx, ', Valid Pearson: ', val_pearson/all_valid_idx)
+        print('Test  RMSE: ', np.sqrt(test_loss_net_all/all_test_idx), ', Test  MAE: ', test_mae/all_test_idx, ', Test  Pearson: ', test_pearson/all_test_idx)
+        
         print(f'Epoch {epoch+1}, {round(time.time() - start_time, 2)}s\n')
     
         if (best_total_val is None) or ((loss_net_all/all_train_idx) < best_total_val):
@@ -309,12 +256,9 @@ if not test:
             torch.save(model, f"{timestamp}_{model_type}_{num_layer}_{num_dim}_{vn}_{trans}_{prediction}.pt")
 
         with open(filepath, 'a') as f:
-            if prediction == 'congestion':
-                f.write(f'{epoch+1},{tp},{fp},{tn},{fn},{p},{r},{fsc},{tp_net},{fp_net},{tn_net},{fn_net},{p_net},{r_net},{fsc_net},')
-                f.write(f'{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},{round(time.time()-start_time, 2)}\n')
-            else:
-                f.write(f'{epoch+1},{loss_node_all/all_train_idx},{loss_net_all/all_train_idx},{val_loss_node_all/all_valid_idx},{val_loss_net_all/all_valid_idx},')
-                f.write(f'{test_loss_node_all/all_test_idx},{test_loss_net_all/all_test_idx},{round(time.time()-start_time, 2)}\n')
+            f.write(f'{epoch+1},{np.sqrt(loss_net_all/all_train_idx)},{np.sqrt(val_loss_net_all/all_valid_idx)},{np.sqrt(test_loss_net_all/all_test_idx)},')
+            f.write(f'{train_mae/all_train_idx},{val_mae/all_valid_idx},{test_mae/all_test_idx},')
+            f.write(f'{train_pearson/all_train_idx},{val_pearson/all_valid_idx},{test_pearson/all_test_idx},{round(time.time()-start_time, 2)}\n')
         
 else:
     # Test model without training
@@ -332,45 +276,11 @@ else:
             node_representation = torch.squeeze(node_representation)
             net_representation = torch.squeeze(net_representation)
             
-            if prediction == 'congestion':
-                test_loss_node = criterion_node(node_representation, target_node_congestion.to(device))
-                test_loss_net = criterion_net(net_representation, target_net_congestion.to(device))
-            else:
-                test_loss_node = criterion_node(node_representation, target_node_demand.to(device))
-                test_loss_net = criterion_net(net_representation, target_net_demand.to(device))
+            test_loss_node = criterion_node(node_representation, target_node_demand.to(device))
+            test_loss_net = criterion_net(net_representation, target_net_demand.to(device))
 
             test_loss_node_all +=  test_loss_node.item()
             test_loss_net_all += test_loss_net.item()
             all_test_idx += 1
 
-            if prediction == 'congestion':
-                if device == 'cpu':
-                    outs = node_representation.detach().numpy()
-                else:
-                    outs = node_representation.cpu().detach().numpy()
-                pred_vals = np.array([0 if i > j else 1 for i, j in outs])
-                real_vals = target_node_congestion.numpy()
-                tp, fp, tn, fn = 0, 0, 0, 0
-                for i, j in zip(pred_vals, real_vals):
-                    if i == 1 and j == 1:
-                        tp += 1
-                    elif i == 1 and j == 0:
-                        fp += 1
-                    elif i == 0 and j == 1:
-                        fn += 1
-                    else:
-                        tn += 1
-                p = 0
-                r = 0
-                fsc = 0
-                if tp + fp > 0:
-                    p = tp / (tp + fp)
-                if tp + fn > 0:
-                    r = tp / (tp + fn)
-                if p + r > 0:
-                    fsc = (2 * p * r) / (p + r)
     print('Test Loss Node: ', test_loss_node_all/all_test_idx, ', Net: ',  test_loss_net_all/all_test_idx)
-    if prediction == 'congestion':
-        print(f'Precision: {p}, Recall: {r}, F-score: {fsc}')
-        print(tp, fp)
-        print(fn, tn)

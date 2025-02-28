@@ -40,7 +40,7 @@ Our work is an extension of the work done in the following paper:
 
 (4) ```run_all_data.py``` takes in raw chip data and engineers features that go into the model
 
-(5) ```train_all_cross.py``` initializes the model with the given hyperparameters, then trains for a set number of epochs. It saves the metrics from training as well as the final model file
+(5) ```train_demand.py``` initializes the model with the given hyperparameters, then trains for a set number of epochs. It saves the metrics from training as well as the final model file
 
 (6) ```visualization.py``` converts each experiment's metrics into graphs for better visualization and comparison between runs
 

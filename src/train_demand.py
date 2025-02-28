@@ -276,45 +276,11 @@ else:
             node_representation = torch.squeeze(node_representation)
             net_representation = torch.squeeze(net_representation)
             
-            if prediction == 'congestion':
-                test_loss_node = criterion_node(node_representation, target_node_congestion.to(device))
-                test_loss_net = criterion_net(net_representation, target_net_congestion.to(device))
-            else:
-                test_loss_node = criterion_node(node_representation, target_node_demand.to(device))
-                test_loss_net = criterion_net(net_representation, target_net_demand.to(device))
+            test_loss_node = criterion_node(node_representation, target_node_demand.to(device))
+            test_loss_net = criterion_net(net_representation, target_net_demand.to(device))
 
             test_loss_node_all +=  test_loss_node.item()
             test_loss_net_all += test_loss_net.item()
             all_test_idx += 1
 
-            if prediction == 'congestion':
-                if device == 'cpu':
-                    outs = node_representation.detach().numpy()
-                else:
-                    outs = node_representation.cpu().detach().numpy()
-                pred_vals = np.array([0 if i > j else 1 for i, j in outs])
-                real_vals = target_node_congestion.numpy()
-                tp, fp, tn, fn = 0, 0, 0, 0
-                for i, j in zip(pred_vals, real_vals):
-                    if i == 1 and j == 1:
-                        tp += 1
-                    elif i == 1 and j == 0:
-                        fp += 1
-                    elif i == 0 and j == 1:
-                        fn += 1
-                    else:
-                        tn += 1
-                p = 0
-                r = 0
-                fsc = 0
-                if tp + fp > 0:
-                    p = tp / (tp + fp)
-                if tp + fn > 0:
-                    r = tp / (tp + fn)
-                if p + r > 0:
-                    fsc = (2 * p * r) / (p + r)
     print('Test Loss Node: ', test_loss_node_all/all_test_idx, ', Net: ',  test_loss_net_all/all_test_idx)
-    if prediction == 'congestion':
-        print(f'Precision: {p}, Recall: {r}, F-score: {fsc}')
-        print(tp, fp)
-        print(fn, tn)

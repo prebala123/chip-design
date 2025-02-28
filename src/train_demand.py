@@ -67,7 +67,7 @@ if not reload_dataset:
         h_data = HeteroData()
         h_data['node'].x = data.node_features
         h_data['net'].x = data.net_features.float()
-        # print(data.node_features.shape)
+        print(data.node_features.shape)
 
         # Create hypergraph structure
         edge_index = torch.concat([data.edge_index_sink_to_net, data.edge_index_source_to_net], dim=1)

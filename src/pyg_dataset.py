@@ -145,7 +145,7 @@ class NetlistDataset(Dataset):
                 clf = (capacity > 0.9).astype(int)
                 net_demand = torch.Tensor(net_demand_dictionary['demand']).float()
                 net_congestion = torch.tensor(clf).long()
-
+                net_capacity = torch.tensor(net_demand_dictionary['demand']).unsqueeze(dim = 1).float()
                 
 
                 file_name = data_load_fp + '/' + 'targets.pkl'
@@ -153,22 +153,9 @@ class NetlistDataset(Dataset):
                 node_demand_dictionary = pickle.load(f)
                 f.close()
 
-                # demand = node_demand_dictionary['demand']
-                # med = np.median(demand)
-                # q1 = np.quantile(demand, 0.25)
-                # q3 = np.quantile(demand, 0.75)
-                # iqr = q3 - q1
-                # bound = med + 5 * iqr
-                # outlier_idx = demand > bound
-
-                # dead_node = ~np.isin(range(num_instances), i_idx)
-                # remove_idx = np.array(range(num_instances))[dead_node | outlier_idx]
-                # mask = dead_node | outlier_idx
-            
-
-                # node_demand = torch.Tensor(node_demand_dictionary['demand'][~mask]).flatten().float()
                 node_demand = torch.Tensor(node_demand_dictionary['demand']).flatten().float()
                 node_congestion = torch.Tensor(node_demand_dictionary['classify']).flatten().long()
+                node_capacity = torch.Tensor(node_demand_dictionary['capacity']).unsqueeze(dim=1).float()
                 
                 fn = data_load_fp + '/' + 'net_hpwl.pkl'
                 f = open(fn, "rb")
@@ -200,10 +187,11 @@ class NetlistDataset(Dataset):
                     assert pd.size(0) == num_instances
                     assert neighbor_list.size(0) == num_instances
         
+                    # example.x = torch.cat([example.x, neighbor_list], dim = 1)
                     example.x = torch.cat([example.x, pd, neighbor_list], dim = 1)
 
-                # mask = torch.from_numpy(mask).bool()
-                # example.x = example.x[~mask]
+                example.x = torch.cat([example.x, node_capacity], dim=1)
+                example.x_net = torch.cat([example.x_net, net_capacity], dim=1)
 
                 data = Data(
                         node_features = example.x, 

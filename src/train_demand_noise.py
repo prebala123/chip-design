@@ -18,7 +18,7 @@ from scipy.stats import pearsonr
 
 from tqdm import tqdm
 import sys
-from pyg_dataset import NetlistDataset
+from pyg_dataset_noise import NetlistDataset
 
 sys.path.append("models/layers/")
 from models.model_att import GNN_node
@@ -135,7 +135,7 @@ best_total_val = None
 # Create csv file to save training metrics
 now = datetime.now()
 timestamp = now.strftime("%Y-%m-%d_%H-%M-%S")
-filepath = f"../results/seed1/{timestamp}__{num_epochs}_{num_layer}_{num_dim}_{vn}_{prediction}_baseline.csv"
+filepath = f"../results/seed1/{timestamp}__{num_epochs}_{num_layer}_{num_dim}_{vn}_{prediction}_noise.csv"
 with open(filepath, 'a') as f:
     f.write('Epoch,Train_RMSE,Valid_RMSE,Test_RMSE,')
     f.write('Train_MAE,Valid_MAE,Test_MAE,')

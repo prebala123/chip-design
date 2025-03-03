@@ -102,8 +102,6 @@ class NetlistDataset(Dataset):
                 example.__num_nodes__ = x.size(0)
                 example.x = x
 
-                # example.x = example.x[:, :-1]
-
                 fn = data_load_fp + '/' + 'degree.pkl'
                 f = open(fn, "rb")
                 d = pickle.load(f)
@@ -174,8 +172,8 @@ class NetlistDataset(Dataset):
 
                     evects = torch.Tensor(dictionary['evects'])
                     # print(evects.shape)
-                    example.x = torch.cat([example.x, evects[:example.x.shape[0]]], dim = 1)
-                    example.x_net = torch.cat([example.x_net, evects[example.x.shape[0]:]], dim = 1)
+                    # example.x = torch.cat([example.x, evects[:example.x.shape[0]]], dim = 1)
+                    # example.x_net = torch.cat([example.x_net, evects[example.x.shape[0]:]], dim = 1)
 
                 if load_pd == True:
                     file_name = data_load_fp + '/' + 'node_neighbor_features.pkl'
@@ -192,10 +190,8 @@ class NetlistDataset(Dataset):
                     # example.x = torch.cat([example.x, neighbor_list], dim = 1)
                     example.x = torch.cat([example.x, pd, neighbor_list], dim = 1)
 
-                example.x = torch.cat([example.x, node_capacity], dim=1)
-                example.x_net = torch.cat([example.x_net, net_capacity], dim=1)
-
-                # example.x = example.x[:, 4:]
+                # example.x = torch.cat([example.x, node_capacity], dim=1)
+                # example.x_net = torch.cat([example.x_net, net_capacity], dim=1)
 
                 data = Data(
                         node_features = example.x, 

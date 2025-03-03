@@ -51,6 +51,7 @@ class GNN_node(torch.nn.Module):
         '''
 
         super(GNN_node, self).__init__()
+        torch.manual_seed(0)
         self.device = device
 
         self.num_layer = num_layer

@@ -102,8 +102,6 @@ class NetlistDataset(Dataset):
                 example.__num_nodes__ = x.size(0)
                 example.x = x
 
-                # example.x = example.x[:, :-1]
-
                 fn = data_load_fp + '/' + 'degree.pkl'
                 f = open(fn, "rb")
                 d = pickle.load(f)
@@ -189,13 +187,11 @@ class NetlistDataset(Dataset):
                     assert pd.size(0) == num_instances
                     assert neighbor_list.size(0) == num_instances
         
-                    # example.x = torch.cat([example.x, neighbor_list], dim = 1)
-                    example.x = torch.cat([example.x, pd, neighbor_list], dim = 1)
+                    example.x = torch.cat([example.x, neighbor_list], dim = 1)
+                    # example.x = torch.cat([example.x, pd, neighbor_list], dim = 1)
 
-                example.x = torch.cat([example.x, node_capacity], dim=1)
-                example.x_net = torch.cat([example.x_net, net_capacity], dim=1)
-
-                # example.x = example.x[:, 4:]
+                # example.x = torch.cat([example.x, node_capacity], dim=1)
+                # example.x_net = torch.cat([example.x_net, net_capacity], dim=1)
 
                 data = Data(
                         node_features = example.x, 

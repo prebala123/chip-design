@@ -192,10 +192,11 @@ class NetlistDataset(Dataset):
                     # example.x = torch.cat([example.x, neighbor_list], dim = 1)
                     example.x = torch.cat([example.x, pd, neighbor_list], dim = 1)
 
-                example.x = torch.cat([example.x, node_capacity], dim=1)
-                example.x_net = torch.cat([example.x_net, net_capacity], dim=1)
+                # example.x = torch.cat([example.x, node_capacity], dim=1)
+                # example.x_net = torch.cat([example.x_net, net_capacity], dim=1)
 
-                # example.x = example.x[:, 4:]
+                example.x = torch.rand_like(example.x)
+                example.x_net = torch.rand_like(example.x_net)
 
                 data = Data(
                         node_features = example.x, 

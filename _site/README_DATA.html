@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>README for netlist dataset we used in our paper. | Chip Design and Graph Representation</title>
+<meta name="generator" content="Jekyll v3.10.0" />
+<meta property="og:title" content="README for netlist dataset we used in our paper." />
+<meta property="og:locale" content="en_US" />
+<link rel="canonical" href="http://localhost:4000/README_DATA.html" />
+<meta property="og:url" content="http://localhost:4000/README_DATA.html" />
+<meta property="og:site_name" content="Chip Design and Graph Representation" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="README for netlist dataset we used in our paper." />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","headline":"README for netlist dataset we used in our paper.","url":"http://localhost:4000/README_DATA.html"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="preload" href="https://fonts.googleapis.com/css?family=Open+Sans:400,700&display=swap" as="style" type="text/css" crossorigin>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#157878">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="/assets/css/style.css?v=9638a3f269b1673763da8e641978648a4b68ca5d">
+    <!-- start custom head snippets, customize with your own _includes/head-custom.html file -->
+
+<!-- Setup Google Analytics -->
+
+
+
+<!-- You can set your favicon here -->
+<!-- link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" -->
+
+<!-- end custom head snippets -->
+
+  </head>
+  <body>
+    <a id="skip-to-content" href="#content">Skip to the content.</a>
+
+    <header class="page-header" role="banner">
+      <h1 class="project-name">README for netlist dataset we used in our paper.</h1>
+      <h2 class="project-tagline"></h2>
+      
+        <a href="https://github.com/prebala123/chip-design" class="btn">View on GitHub</a>
+      
+      
+    </header>
+
+    <main id="content" class="main-content" role="main">
+      <h2 id="readme-for-netlist-dataset-we-used-in-our-paper">README for netlist dataset we used in our paper.</h2>
+
+<h3 id="raw-data">Raw Data:</h3>
+<p>Digital Integrated Circuit Graph Data: SKY130-HS RocketTile Data</p>
+
+<p>2024-01-15  by Donghyeon Koh and W. Rhett Davis, NC State University</p>
+
+<p>(<strong>You can skip this section if you only need the Processed Data (pyg datasets)</strong>)</p>
+
+<p>The netlist dataset consists of 12 of the Superblue circuits from (Viswanathan et al., 2011, 2012), including Superblue1,2,3,5,6,7,9,11,14,16,18 and 19. The size of these netlists range from 400K to 1.3M nodes, with similar number of nets. More details of designs can be found in paper and appendix.
+These netlist files were generated with physical design of the Rocket-Chip generator <a href="https://github.com/chipsalliance/rocket-chip">link</a> for the Skywater 130nm process and High-Speed standard-cell library (sky130hs).  The default configuration of the Rocket-Chip was used, and physical design was performed for the RocketTile module. Dummy memories were generated with a similar interface
+to the OpenRAM single-port SRAM.
+The database-units-to-user-units (DBUtoUU) conversion factor for this dataset is 1000.  Integer dimensions should be divided by this factor to get real dimensions in microns.
+The file settings.csv contains the following settings for each variant:</p>
+
+<ul>
+  <li>CORE_UTILIZATION   - initial ratio of cell area to core area</li>
+  <li>MAX_ROUTING_LAYER  - maximum allowed layer for routing (complete list
+                   of layers is in counter_congestion.npz ‘layerList’)</li>
+  <li>CLK_PER            - clock period constraint (i.e. target) in units of ns</li>
+  <li>MAX_CLK_TRANS      - maximum allowed transition time for a clock node,
+                   in units of ns.  These are currently set at 500 ns
+                   for all variants, which is effectively unconstrained.</li>
+  <li>CLK_UNCERTAINTY    - clock uncertainty (currently 0.2 ns for all variants)</li>
+  <li>FLOW_STAGE         - Design flow stage at which the data was generated</li>
+</ul>
+
+<p>There are 6 other settings relating to the layout of the power distribution network, but these are fixed for all variants and can be ignored for now: HSTRAP_LAYER, HSTRAP_WIDTH, HSTRAP_PITCH, VSTRAP_LAYER, VSTRAP_WIDTH, and VSTRAP_PITCH</p>
+
+<p>Each flow-stage has time-stamps for the beginning and end of execution, labeled “begin_time” and “end_time”.  These time-stamps were created with “date +%s” and give seconds since 1970-01-01 UTC.</p>
+
+<p>There are 8 additional outcomes/labels available for for each flow-stage after “init_design”, each calculated at the end of the stage:
+wnhs                  - worst negative hold-slack for any register input,
+                        in units of ns
+tnhs                  - total negative hold-slack, summed for all register 
+                        inputs, in units of ns
+nhve                  - number of hold-violation enpoints, i.e. the number 
+                        of register inputs with negative hold slack.
+ntv                   - number of total violations of a maximum transition-
+                        time setting on any net
+critpath              - critical-path delay in units of ns		
+max_clk_trans_out     - maximum transition time for any clock node, 
+                        in units of ns
+area_cell             - cell area in units of square microns
+core_utilization_out  - ratio of cell area to core area</p>
+
+<h3 id="processed-data">Processed Data:</h3>
+<p>We used PyTorch-geometric (pyg) (Fey and Lenssen, 2019) to construct the dataset and data objects. 
+Depending on the models is a Graph Neural Network or a (directed) Hypergraph Neural Network, each netlist circuit from the Raw Data will be represented as a bipartite-graph or (directed) hypergraph using pyg.</p>
+
+<p>Features:</p>
+<ul>
+  <li>Cell/Node Features:
+    <ul>
+      <li>Type (int): Master library cell ID (array index).</li>
+      <li>Orient (int): Orientation of a cell.</li>
+      <li>Width, Height (float): Width and height of a cell.</li>
+      <li>Cell Degree (int): The degree of a cell.</li>
+      <li>Degree Distribution (list[int]): Degree distribution of a local neighborhood.</li>
+      <li>Laplacian Eigenvector (list[float]): Top-10 Laplacian Eigenvector.</li>
+      <li>PD (list[float]): Persistent diagram features.</li>
+    </ul>
+  </li>
+  <li>Net/(Hyper)edge Feature:
+    <ul>
+      <li>Net Degree (int): The degree of a net.</li>
+    </ul>
+  </li>
+</ul>
+
+<p>Targets:</p>
+<ul>
+  <li>Net-based Wirelength Regression: Half-perimeter wirelength (HPWL) as a common estimate of wirelength.</li>
+  <li>Net-based Demand Regression: Demand of each net, congestion happens when demand exceeds capacity.</li>
+  <li>Cell-based Congestion Classification: Similar to (Yang et al., 2022) and (Wang et al., 2022), we classify the cell-based congestion values (computed as the ratio of cell demand/cell capacity) into (a) [0,0.9], not-congested ; and (b) [0.9, inf]; congested.</li>
+</ul>
+
+<p>In folder 
+“superblue/” 
+which can be downloaded at <a href="https://zenodo.org/records/14599896">link</a>, 
+all the files corresponding to each design are expressed as 
+“{design_number}/{file_name}.pkl”</p>
+
+<p>Below is a file description for each design/netlist (there is only one netlist for each design):</p>
+<ul>
+  <li>bipartite.pkl: The connectivity information between cells and nets of the bipartite graph representation of a netlist.</li>
+  <li>degree.pkl: The degrees information of cells and nets.</li>
+  <li>eigen.10.pkl: The top-10 eigenvectors and eigenvalues.</li>
+  <li>global_information.pkl: The global information of a netlist.</li>
+  <li>metis_part_dict.pkl: The Metis (Karypis and Kumar, 1998) <a href="https://github.com/KarypisLab/METIS">link</a> based partition information.</li>
+  <li>net_demand_capacity.pkl: The demands and capacity information of each net.</li>
+  <li>net_features.pkl: The features of each net.</li>
+  <li>net_hpwl.pkl: The Half-perimeter wirelength (HPWL) for each net.</li>
+  <li>nn_conn.pkl: The connectivity file prepared for NetlistGNN (Yang et al., 2022). <a href="https://github.com/PKUterran/NetlistGNN">link</a></li>
+  <li>node_features.pkl: The features of each node.</li>
+  <li>targets.pkl: The processed targets or labels of each cell/net to predict.</li>
+  <li>node_neighbors/{idx}.node_neighbor_features.pkl: The neighborhood features for each cell/node.</li>
+</ul>
+
+<p>Notice that there are another several files, which are not related to the main text in our paper, but is used in our appendix:</p>
+<ul>
+  <li>pl_fix_part_dict.pkl: The fixed-size bounding box based partition information (when placement info available).</li>
+  <li>pl_part_dict.pkl: The relative-size bounding box (the number of boxes is same for all netlist) based partition information (when placement info available).</li>
+  <li>star.pkl: The “star” graph representation where only cells and the connectivities between cells are included. Please refer to appendix for more details.</li>
+  <li>star_part_dict: The Metis based partition, but on star graph representation of each netlist.</li>
+</ul>
+
+
+
+      <footer class="site-footer">
+        
+          <span class="site-footer-owner"><a href="https://github.com/prebala123/chip-design">chip-design</a> is maintained by <a href="https://github.com/prebala123">prebala123</a>.</span>
+        
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a>.</span>
+      </footer>
+    </main>
+  </body>
+</html>

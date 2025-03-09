@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Chip Design and Graph Representation</title>
+<meta name="generator" content="Jekyll v3.10.0" />
+<meta property="og:title" content="Chip Design and Graph Representation" />
+<meta property="og:locale" content="en_US" />
+<link rel="canonical" href="http://localhost:4000/" />
+<meta property="og:url" content="http://localhost:4000/" />
+<meta property="og:site_name" content="Chip Design and Graph Representation" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Chip Design and Graph Representation" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebSite","headline":"Chip Design and Graph Representation","name":"Chip Design and Graph Representation","url":"http://localhost:4000/"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="preload" href="https://fonts.googleapis.com/css?family=Open+Sans:400,700&display=swap" as="style" type="text/css" crossorigin>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#157878">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="/assets/css/style.css?v=9638a3f269b1673763da8e641978648a4b68ca5d">
+    <!-- start custom head snippets, customize with your own _includes/head-custom.html file -->
+
+<!-- Setup Google Analytics -->
+
+
+
+<!-- You can set your favicon here -->
+<!-- link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" -->
+
+<!-- end custom head snippets -->
+
+  </head>
+  <body>
+    <a id="skip-to-content" href="#content">Skip to the content.</a>
+
+    <header class="page-header" role="banner">
+      <h1 class="project-name">Chip Design and Graph Representation</h1>
+      <h2 class="project-tagline"></h2>
+      
+        <a href="https://github.com/prebala123/chip-design" class="btn">View on GitHub</a>
+      
+      
+    </header>
+
+    <main id="content" class="main-content" role="main">
+      <h1 id="introduction">Introduction</h1>
+
+<p>Chips are key components of many applications and tools, from mobile phones to self-driving cars. Chip design involves defining the product requirements for a chip’s architecture and system, as well as the physical layout of the chip’s individual circuits, a task which is becoming increasingly challenging as these technologies continue to develop.  Due to Moore’s Law, rising complexity is pushing the limits of existing chip design techniques, and machine learning offers a possible avenue to new progress. One specific area where chip designers face problems is congestion; often there are certain areas in a chip through which large amounts of information must pass, creating bottlenecks and reducing efficiency. Although electronic design automation tools have been useful to ensure scalability, reliability and time to market, our group aims to improve the process by exploring self-supervised learning techniques that will create useful features to learn effective graph representations to improve performance in predicting congestion and demand.</p>
+
+<p>Given the relatively unexplored domain of machine learning for chip design, many recent attempts have tried to apply tools from different fields, which may not perfectly fit this specific use-case. For example, chip circuits are often represented as graphs in machine learning, and researchers must choose a specific kind of graph and the features within the graph. Our project aims to identify possible shortcomings in current circuit representations and suggest possible improvements, which will allow for deeper and more accurate research in the future.</p>
+
+<h1 id="methods">Methods</h1>
+
+<h2 id="exploration">Exploration</h2>
+
+<h3 id="congestion">Congestion</h3>
+
+<p>Visualizing routing congestion and wirelength patterns is a key early step in the physical design process. Our group devised a congestion map — heatmap of routing demand vs capacity across the chip) to illustrate where the design is over-stressed. EDA tools can divide the chip area into a grid of global routing cells (GRCs) and color code each cell by its routing overflow — the red tone color here indicates regions where the number of required routing tracks exceed what’s available. The congestion heat map provides a spatial insight that allows our group to see hotspots that need attention. In practice, our mentors mention these maps can highlight issues such as too many cells being bunched near a macro pin or a channel with multiple long nets running through. In the floorplanning and placement stage of the chip process, the congestion heatmap gives us knowledge to which areas the cells need to be spread out more or reordering logic to reduce the number of crossings in that channel. 
+Analyzing congestion at an early stage is important because moving a macro to alleviate a choke point is much easier to do before detailed routing has already been made. harder in the later stages of the design process. Thus, a congestion heatmap aids in a quicker design closure because it mitigates risks in the later stages of the design process. Our group made a congestion heatmap for one of the chip designs to pinpoint where in the layout wires are most crowded, which serve as guides to improve floorplanning (e.g. changing block placement or adding routing layers).</p>
+
+<p><img src="images/heatmap.png" /></p>
+
+<p>Demand is the amount of routing resources that need to pass through a GRC, and is a target in congestion prediction tasks. Our group visualized routing demand distribution – the number of routing tracks necessary in each region of the chip — with a histogram. The large Superblue circuits’ demand can be visualized as demand on the x-axis and frequency on the axis. The shape of the distribution reflects the overall routability and balance of the design. In the Superblue 18 circuit, demand seems to be bimodal with most demand concentrated at 3 and 17.  This particular chip’s histogram is also narrow and somewhere centered in one of the peaks, which indicates the routing load is balanced across the chip, i.e. most GRCs are clustered around moderate demand. In contrast, our group found some of the other chips’ histogram followed a wide or skewed distribution, which indicates uneven routing resource usage or bad design.</p>
+
+<p><img src="images/demand.png" /></p>
+
+<p>A goal of plotting the demand distribution across the Superblue circuits was to identify outlier regions, which correspond to congestion hotspots on a chip. Our mentors’ domain knowledge helped our group understand that a long tail in the demand histogram indicates a small subset of GRCs where demand supersedes capacity. While plotting the distribution across the chips, our group looked for heavy tails in each histogram for those high demand bins. That would highlight congestion prone areas to look out for. In practice, one of the domain experts explained that physical design tools would report metrics like maximum overflow (a single worse GRC with demand overcapacity) and the percentage of GRCs with overflow.</p>
+
+<p>Plotting this histogram reveals how routing resources are utilized across the design, identifying patterns and outliers. On the Superblue circuits, many histograms have small fraction of regions with sizable demand; these regions have disproportionately large routing load. Our group wished to quantify how spread out demand is across the chips, and in turn scout out how many near-capacity regions there are.
+Our group mainly focused on predicting net demand as a target variable, and plotting the demand distribution as part of the EDA process allows us to look through these histograms and identify congestion prone regions. In practical terms, this analysis can serve as a warning for designers to see if the current placement is likely to cause routing congestion before detailed routing occurs. This sort of risk mitigation occurs because if the histogram shows many bins at high demand, engineers can revisit placement to spread out cells or adjust floorplanning like adding extra routing layers/resources. Since detailed routing is a time consuming process, the demand histograms can potentially save time and money by scouting out design flaws before engineers proceed in the next chip design process.</p>
+
+<h3 id="baseline-model">Baseline Model</h3>
+
+<p>In the second quarter of the capstone our group continued our study of the DE-HNN model architecture and used our learnings to intuit the pros and cons of this architecture. The DE-HNN (Directional Equivariant Hypergraph Neural Network) is a framework for learning circuit properties from netlist graphs. The baseline model implemented by the authors can be characterized as a message-passing neural network on a directed hypergraph representing the Superblue circuit netlist. The dataset depicts the logic gates (nodes) and the wires connecting them (edges), which intuitively leads to a graph representation. Moreover, the Superblue dataset is represented as a hypergraph, nodes correspond to circuit cells (logic gates or blocks), and nets are modeled as hyperedges that connect one driver cell to multiple sink cells​. In general, graph designs representing the chips can vary greatly across companies and types of chips (modem chips, memory chips, etc.), motivating various GNN architectures that account for different types of dependencies and structures.</p>
+
+<p>Our work was benchmarked against, and later built upon, a two layer DE-HNN model - a GNN architecture that, importantly, represents the design as a directed hypergraph and uses virtual nodes to capture long range interactions between cells.</p>
+
+<p><img src="images/baseline.png" /></p>
+
+<p>Given by the README for the netlist dataset, all cells (nodes) and nets (hyperedge) are associated with feature vectors. Node features contain cell type, dimensions, degree, local connectivity information such as degree distribution, top-10 Laplacian Eigenvector, and persistent diagram features. While each net’s feature is aggregated from its pins (degree).
+All the baseline models our group ran include virtual nodes, but this advanced feature can be switched off by setting it to false in the paper implementation. The baseline without virtual nodes simply uses a message passing scheme between cells and nets. In each layer, a cell node gathers messages from the nets it is connected to, and a net (hyperedge) gathers messages from the cells that belong to it. The baseline model our group benchmarked against includes virtual nodes, with validation and test RMSE converging at around 7. In the DE-HNN paper, the targets for prediction include per-net wirelength, per-net demand, and congestion class. Recall that wirelength refers to the post-rout wirelength of that net, demand refers to the total routing demand that net contributes, and congestion is a classification problem of predicting 1 or 0 – whether the region around a cell is congested or not. The central focus of the baseline model and our group’s work is to minimize error in these predictions. As our group discovered, feature elements like capacity, architectural changes, etc. can be added or modified to reach these goals.</p>
+
+<h2 id="explanation">Explanation</h2>
+
+<h3 id="ablation-study">Ablation Study</h3>
+
+<p>First we wanted to determine the relative feature importances of each feature in the model in order to better understand how the DE-HNN model is making predictions and include some explainability in the process. One way we attempted this is by training a model with one feature removed at a time using both the DE-HNN and a Random Forest in order to see how much the loss increased, then ranking the features by their impact on the model.</p>
+
+<p>The features that we work with are</p>
+<ul>
+  <li>Cell type - the type of logic gate that the instance is</li>
+  <li>Width and height - physical dimensions of the cell</li>
+  <li>Orientation - based on the rotation of the cell</li>
+  <li>Degree - The number of nets a cell is a part of</li>
+  <li>Eigenvectors - Spatial embeddings that reveal clusters in the graph</li>
+  <li>Degree Distribution - A local view of the graph, counting the number of neighbors at increasing distances</li>
+  <li>Persistence Diagram - A summary of topological features encoding growing neighborhood around a node</li>
+</ul>
+
+<p><img src="images/ablation_dehnn.png" /></p>
+
+<p>When we ran the ablation study on the DE-HNN model we found that removing features had almost no effect on the performance of the model, with the maximum change being +1.8% from removing eigenvectors. Because of this we thought that model may only be learning from the graph structure itself, not the actual features. To test this, we tried randomizing all of the features to noise, and testing the performance of the model again.</p>
+
+<p><img src="images/noise.png" /></p>
+
+<p>Since by randomizing all of the features the model performed only 0.2% worse than with the features, we found that the DE-HNN only learns on the structure of the graph and not the features of each node and net. However we still want the feature importances through an ablation study, so we also used a random forest, since it can only use the features and not the connections.</p>
+
+<p><img src="images/ablation_forest.png" /></p>
+
+<p>From the results of this ablation study, we can see that the most important features are the eigenvectors, degree distribution, and persistence diagram. Since these are all the topological features that relate to graph structure it makes sense that the connections themselves may be more important than the cell features. If we remove all of the topological features at once, the performance worsens by 74.4% further showing that the graph structure is crucial to predicting congestion.</p>
+
+<h3 id="shap-analysis">SHAP Analysis</h3>
+
+<p>Another way to quantify feature importances is with SHAP, or SHapley Additive exPlanations. SHAP is a game-theory based method for explaining a machine learning model’s predictions by calculating the impact of each feature in every prediction, and provides both a magnitude and direction for a feature’s effect.</p>
+
+<p>We ran the SHAP algorithm on a LightGBM model using the same train/test split as in the baseline, and generated the feature importances for both the node and net level predictions. Figure (ADD FIG NUM) shows the resulting summary plot for the node features, where the colors of each dot represent their value for an individual datapoint, and their position on the axis represents their impact on the model output.</p>
+
+<p><img src="images/shap_node.png" /></p>
+
+<p>This SHAP plot for the node predictions supports the findings from the previous ablation study; the eight most impactful features are eigenvectors, and all ten eigenvectors are within the top twelve out of the 45 total features. It is also interesting to note that despite the eigenvectors being previously generated with a specific ranking in terms of information captured, the top eigenvectors are not necessarily the most impactful. We are unable to perform significant analysis on the directionality of each feature’s impact, as the eigenvectors are simply embeddings of the graph structure, but knowledge of the eigenvectors’ relative importance can help guide future experiments.</p>
+
+<p>The SHAP summary plot for the net features (Figure (ADD FIGURE NUMBER)) also highlights the importance of the eigenvectors, which have a significantly larger impact than the degree.</p>
+
+<p><img src="images/shap_net.png" /></p>
+
+<h2 id="experimentation">Experimentation</h2>
+
+<p>Following our initial EDA and attempts at drawing insight on the baseline model through explainable AI methods, we constructed a set of informed experiments to tackle key issues with the baseline model: a long runtime, a lack of generalizability, and limited learning on the node and net features.</p>
+
+<h3 id="tree-modeling">Tree-Modeling</h3>
+
+<p>As previously mentioned, we noticed that the baseline DE-HNN model was not learning from the node and net features, and was instead only making predictions based on the structure of the graph, formed by the millions of connections in the training dataset. From our earlier analysis, however, we knew that there is some value in the features, and they can also serve as a representation of the greater graph structure, such as through the eigenvectors. This led us to considering tree-based models as an alternative architecture for the net demand prediction task. These models would only have the net features as a dataset (eigenvectors and degree), but we hypothesized that they would reduce training time due to a tabular data structure rather than a dense graph.</p>
+
+<h3 id="feature-engineering-adding-capacity">Feature Engineering (Adding Capacity)</h3>
+
+<p>Although the DE-HNN does well at capturing the graph structure, it doesn’t learn much from the node and net features. Therefore, we wanted to try adding a new feature called capacity into the model to see if it could perform better. Capacity is a rough estimate of the amount of resources available for placing cells and routing wires in a given area. We believe that the DE-HNN model can learn the interactions between capacity and dense topology, to learn that areas with low capacity but a large cluster of cells tend to be more congested. We hypothesize that the DE-HNN model will improve its performance compared to the baseline, because of this new feature. We also hypothesize that the LightGBM will improve as capacity is positively correlated with demand with an r^2 value of 0.33.</p>
+
+<p><img src="images/demand_capacity.png" /></p>
+
+<h3 id="partitioning">Partitioning</h3>
+
+<p>Through some intuition, and inspiration from a method utilized in the DE-HNN model, we believed that reducing the physical size of the problem would improve the model’s performance. In the DE-HNN model, virtual nodes are inserted into the graph to connect nodes within a given partition. This partition is identified using the METIS algorithm. METIS is well-regarded for its efficiency in handling large-scale graphs and its ability to produce balanced partitions while minimizing inter-partition edge cuts. There are two key parameters considered when initializing METIS: <code class="language-plaintext highlighter-rouge">nparts</code> and <code class="language-plaintext highlighter-rouge">ufactor</code>. The former is self-explanatory - it is the number of partitions the input graph should be divided into. The latter controls the permissible imbalance between partition sizes. A low ufactor enforces balance, but might hide natural variations in structure; a higher ufactor might let natural clusters emerge even if they are of unequal sizes. While the DE-HNN model prioritized balanced partitions, our intuition regarding chip design suggested a higher ufactor may reveal clusters of nodes representing real, cohesive units within the chip.</p>
+
+<p>In our experiments, we varied the ufactor from 0 to 900 in steps of 100, and the number of partitions was varied from 10 to 100 in steps of 10. This systematic parameter sweep allowed us to evaluate partition quality across a broad spectrum of configurations. The quality of a given partitioning is evaluated through the conductance metrics. The results of our parameter sweep are depicted in Figure X. Based on our evaluations, a setting of ufactor = 600 and 10 partitions was identified as optimal for the full graph. 
+Recognizing that the global partitioning might obscure local substructures, we implemented a hierarchical refinement strategy, dubbed ‘Subpartitioning’. Following the initial partitioning, each of the 10 partitions was treated as an independent subgraph. For each subgraph, we reapplied the same heatmap-based parameter sweep and assessed local partition quality. The same parameter settings that were optimal for the global graph were identified as optimal for the subgraphs. This multi-level approach allowed us to capture nested modular structures that are characteristic of chip designs. 
+This strategy resulted in 1000 “new” graphs, potentially representing functionally cohesive blocks within the chip. To mimic the original set of node and net features, we recompute the degree and Laplacian eigenvector for each node and net. Though the training set has increased 100-fold, each graph is, on average, 1/100th the size of the original graph. This will dramatically cut the computational resources required to train the model. Further, we hypothesized that this strategy would allow the model to better understand the common substructures present across different designs, aiding the models generalizability on unseen designs.</p>
+
+<h3 id="downsampling">Downsampling</h3>
+
+<p>In our EDA, we noticed that the demand variable is bimodal, with a smaller peak between 0 and 5 and a much larger peak between 15 and 20. In conducting an error analysis on the baseline model, we noticed that it generally did well at predicting values around the larger peak, but failed to recognize the second common range of values.</p>
+
+<p>To try and create a more representative model that is able to derive learnings relevant to the full dataset, we decided to implement downsampling (or undersampling) - a process in which the training data is binned by the target variable, and each bin is randomly sampled to ensure equal sizes. This ensures that the dataset is balanced across the full range of the target variable, and will ideally allow us to improve the model’s performance. Choosing the number of bings and the bounds of each bin was an important task, as these outputs could significantly alter the final model’s predictions. To choose the bins, we defined multiple different bin counts/ranges, and performed a search on the final dataset size, with the intention of ensuring a balanced dataset, while minimizing the amount of data removed.</p>
+
+<p>Because our dataset is a graph, we also had to ensure that the edges also matched the new, smaller dataset. This involved an iteration through all the nodes and edges to ensure that we didn’t lose any edges that needed to remain in the smaller dataset, while also retaining as much of the graph as possible. From this downsampling process, we hypothesized that we would be able to improve test and validation accuracy, while preventing overfitting. We also expected that a reduced dataset size would improve the runtime.</p>
+
+<h3 id="hypervectors">Hypervectors</h3>
+
+<p>One of the mentors suggested we can explore different architectural models as a learning process and to see if those can achieve similar results to the baseline model — this road let us discover some flaws and limitations of graph neural networks (GNNs). This way we can compare the limitations and pros of each architecture. Our group then went on a journey to thoroughly understand various GNN architectures to intuit which other architectures will give improvement. The core idea of a GNN is to learn how to represent each node in the graph by considering its own features, the features of its neighbors, and the structure of the graph. The GNN does this through a process called message passing or neighborhood aggregation. Essentially, each node “passes” its features to its neighbors, and each node “receives” messages from its neighbors. These messages are then combined to update the node’s representation. This process is repeated layer by layer to allow information to propagate through the graph.
+One of the mentors suggested we can explore different architectural models to see if we can achieve similar results to the baseline model, meaning it doesn’t have to be graph neural networks. This way we can compare the limitations and pros of each architecture. Our group then went on a journey to thoroughly understand various GNN architectures to intuit which other architectures will give improvement. The core idea of a GNN is to learn how to represent each node in the graph by considering its own features, the features of its neighbors, and the structure of the graph. The GNN does this through a process called message passing or neighborhood aggregation. Essentially, each node “passes” its features to its neighbors, and each node “receives” messages from its neighbors. These messages are then combined to update the node’s representation. This process is repeated layer by layer to allow information to propagate through the graph. The DE-HNN model architecture the authors proposed is a very sophisticated model, especially when using virtual nodes to capture long-range interactions. I analyzed a less sophisticated model, namely, the Graph Attention Transformer (GAT) to see what it’s doing differently than DE-HNN. Following our group project’s timeline cadence, these discoveries would later give me insights to use hypervectors. It seems the fundamental difference lies in how a particular model handles the “message passing” step. The GAT requires the concept of “attention” to update the node’s representation. This assumes all neighbors are equally important, which is not true in our case or real-world graphs. We know some neighbors are more important from their persistent diagram, i.e. the topology the node lives in contains richer information than other topologies.</p>
+
+<h1 id="results">Results</h1>
+
+<h3 id="tree-modeling-1">Tree-Modeling</h3>
+
+<p><img src="images/tree.png" /></p>
+
+<p>We experimented with two tree-based modeling architectures, LightGBM and Random Forest. For each model, we ran a grid search to optimize for Validation RMSE + Test RMSE, to settle on the final hyperparameters used to generate the results in table (ADD TABLE NUMBER).</p>
+
+<p>Overall, these new approaches did not have as much success as the baseline DE-HNN model, likely because there is importance in the connections between nodes that simply isn’t captured by the feature set. However, the tree-models trained significantly faster, with the LightGBM model training nearly 100x faster than the baseline DE-HNN, and the Random Forest model about 4x faster (but with slightly less loss in performance). This suggests that there may be some value in further exploring this approach, especially with further optimizations or feature enhancements.</p>
+
+<h3 id="feature-engineering-adding-capacity-1">Feature Engineering (Adding Capacity)</h3>
+
+<p><img src="images/tree.png" /></p>
+
+<p>Adding capacity only improved the performance of the DE-HNN model by 0.6%, showing that it did not have much of an impact on the model. We believe that this result follows our previous finding that the DE-HNN only learns from the graph structure and not the features. Since high capacity areas can be correlated with densely connected areas in the graph with a lot of cells nearby, the DE-HNN could be estimating capacity by itself without needing an explicit feature for it.</p>
+
+<p>However we see an improvement of 41.6% in the LightGBM model after we add capacity. Since a tree model has no way to model the graph structure, it needs to be given features like capacity explicitly as it relates to the graph. Capacity is more correlated with demand than other features, making the tree model’s performance almost comparable to the DE-HNN. Although the loss is 24% worse, the training time is almost 100 times faster, giving a great tradeoff of accuracy for speed.</p>
+
+<h3 id="partitioning-1">Partitioning</h3>
+
+<p><img src="images/partitioning.png" /></p>
+
+<p>Subpartitioning noticeably improves performance, while significantly reducing training time and required memory. In initial experiments, we observed that the loss plots were highly erratic. Clearly, because of increasing the number of training samples, the model was giving too much weight to each sample, and appeared not to converge. Reducing the learning rate by a factor of 100 allowed the model to converge incredibly quickly. In fact, in figure X, we see the model achieve a lower test loss than the baseline model. These results suggest that reducing the problem was a viable strategy and allowed the GNN to better capture local dependencies. We believe the model learned to identify smaller common networks in the chip, aided by, importantly, training on smaller, cohesive graphs.</p>
+
+<h3 id="downsampling-1">Downsampling</h3>
+
+<p><img src="images/downsampling.png" /></p>
+
+<p>Downsampling slightly reduced both the validation and test RMSE, suggesting that this method did help the model generalize slightly better. Even though the downsampled dataset was slightly different every time, due to random sampling, these results were relatively consistent. The biggest improvement, however, was in terms of the training time, which was cut in half. This is driven by the significantly reduced dataset, not just in terms of the number of nodes, but also the connections between them. In addition, the model trained on the downsampled dataset also converged slightly faster.</p>
+
+<p>The fact that this approach was able to replicate the performance of the DE-HNN could suggest that not all the information in the dense graph is relevant, and that not much information is lost with a cursory downsampling approach. Using domain specific knowledge or a more informed approach to defining the bins for downsampling could lead to even further improvements.</p>
+
+<h3 id="hypervectors-1">Hypervectors</h3>
+
+<p>We looked for hypervector-based node and net embeddings as potential integration of high-dimensional computing in DE-HNN. Hypervectors are good in situations where we are not trying to squeeze out every last drop of performance in a model, .i.e. We are comfortable with decent but not fantastic performance. The pro is that it should be faster to train and be more generalizable. We incorporated the features in High-dimensional hypervectors to replace DE-HNN’s learned node and net feature embeddings to dramatically reduce memory costs. Instead of storing a dense embedding vector per node/net, each node or net is assigned a fixed hypervector (e.g. a 10,000-bit random vector which is easily initialized in python code) or computed from its attributes, eliminating large embedding tables. We suspect this distributed representation is more highly generalizable – similar node features map to similar hypervectors, improving the model’s ability to transfer to new circuits.​
+We found integrating HDC in place of embeddings is faster and more memory efficient, although there were accuracy trade-offs. There is thus a potential accuracy trade-off: HDC might sacrifice a bit of peak accuracy in exchange for huge gains in speed and memory. This is reflected in the results in the classification of congested nodes which were in the 70s to 80s in accuracy.</p>
+
+<h1 id="conclusion">Conclusion</h1>
+
+<p>The success of alternate representations of a chip design, through downsampling and subpartitioning, suggest that the full graph structure is too complex for the GNN to model. As it stands, we believe local and global information is still not easily propagated through the model. Our experiments validate two methods to reduce noise and improve generalizability on different levels of granularity. Downsampling “simplifies” the graph while mimicking its original characteristics (through effective stratified sampling). Each design likely shares similar overarching characteristics. Downsampling attempts to capture this larger structure while limiting the various sources of noise present throughout the dense network of each chip. Subpartitioning, on the other hand, more strictly adheres to the chip design, but prioritizes local dependencies with the belief that these structures are representative of smaller blocks common within all designs. Both of these methods reduce the complexity and overall size of the dataset, resulting in a drop in required computing resources and faster training.</p>
+
+<p>Experiments with tree-based models also produced interesting results. Particularly, after adding capacity as a feature, LightGBM approached similar losses as the baseline DE-HNN. When looking at the SHAP analysis, this predictive success was in large part due to the eigenvectors, which serve as a representation of the graph structure. This approach wasn’t as effective as a full GNN, however, suggesting that there is value to the edges that cannot be described by the eigenvectors alone.</p>
+
+<p>As naive as our algorithms were, we believe that their performance can be enhanced with more thoughtful design choices suggested by engineers from various points in the chip design lifecycle. Such domain expertise will help identify what aspects of a design can be prioritized or ignored when determining these alternate representations. We believe that a close look into stratification strategies can create more expressive downsampled graphs. Similarly, we believe that even finer substructures can be extracted while subpartitioning, or, alternatively, some structures are better analyzed as larger, cohesive pieces.</p>
+
+<p>Of course, with different constraints, from varying use-cases to time and compute restrictions, comes a trade-off. A cursory analysis early in a chip’s design might not require the extensive training time of a GNN, and can be sufficiently modeled with a tree architecture. Certain chips may call for the preservation of local structures and a partitioning approach. Regardless of the context, by blending business needs, domain specific knowledge, and the findings from these experiments,</p>
+
+
+      <footer class="site-footer">
+        
+          <span class="site-footer-owner"><a href="https://github.com/prebala123/chip-design">chip-design</a> is maintained by <a href="https://github.com/prebala123">prebala123</a>.</span>
+        
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a>.</span>
+      </footer>
+    </main>
+  </body>
+</html>

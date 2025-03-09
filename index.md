@@ -47,6 +47,7 @@ We extended research into the DE-HNN (Directional Equivariant Hypergraph Neural 
 
 
 <img src="images/baseline.png"/>
+
 Our work was benchmarked against, and later built upon, a two layer DE-HNN model, with a node dimension of 16 in each layer, and virtual nodes. The dataset for this model used Superblue 18 and 19 as validation/test chips, and the remaining 10 chips served as training data, although we conducted an analysis that showed that most configurations of a train/test split had similar results. This baseline model had validation and test RMSE converging at around 6.4.
 
 

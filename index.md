@@ -19,7 +19,7 @@ details summary {
 # Introduction <a name="introduction"></a>
 
 <img src="images/chip.png"/>
-Source: https://www.newscientist.com/article/2398994-fastest-ever-semiconductor-could-massively-speed-up-computer-chips/
+<small> Source: https://www.newscientist.com/article/2398994-fastest-ever-semiconductor-could-massively-speed-up-computer-chips/ </small>
 
 Chips are key components of many applications and tools, from mobile phones to self-driving cars. Chip design involves defining the product requirements for a chip's architecture and system, as well as the physical layout of the chip's individual circuits, a task which is becoming increasingly challenging as these technologies continue to develop. Rising complexity is pushing the limits of existing chip design techniques, and machine learning offers a possible avenue to new progress. One specific area where chip designers face problems is predicting demand; often there are certain areas in a chip through which large amounts of information must pass, creating bottlenecks and reducing efficiency. Although electronic design automation tools have been useful to ensure scalability, reliability and time to market, our group aims to improve the process by exploring new machine learning techniques.
 
@@ -38,7 +38,7 @@ We used 12 Superblue circuits from (Viswanathan et al., 2011, 2012). These circu
 <br>
 A netlist is a representation of electronic circuits where we represent connections between instances and nets. Instances contain the logic of the circuits and nets are the connections between them. They can be represented as a bipartite graph with both instances and nets being nodes, for better message passing in the GNN.
 <img src="images/netlist.png"/>
-Source: https://arxiv.org/pdf/2404.00477
+<small> Source: https://arxiv.org/pdf/2404.00477 </small>
 </details>
 
 ## Baseline Model

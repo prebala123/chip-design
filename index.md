@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Chip Design and Graph Representation
+description: Pranav Rebala - Neil Damle - Sahith Cherumandanda - Wai Siu Lai
 ---
 
 <style>
@@ -41,6 +42,7 @@ We used 12 Superblue circuits from (Viswanathan et al., 2011, 2012). These circu
 <br>
 A netlist is a representation of electronic circuits where we represent connections between instances and nets. Instances contain the logic of the circuits and nets are the connections between them. They can be represented as a bipartite graph with both instances and nets being nodes, for better message passing in the GNN.
 <img src="images/netlist.png"/>
+Source: https://arxiv.org/pdf/2404.00477
 </details>
 
 ## Baseline Model

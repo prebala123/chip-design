@@ -1,12 +1,14 @@
 .sidebar {
-    width: 250px;
-    height: 100vh;
-    background: #ffffff;
+    height: 60px;
+    background-color: #159957; 
+    background-image: linear-gradient(120deg, #155799, #159957);
     color: rgb(0, 0, 0);
-    padding: 20px;
+    padding: 15px;
     position: fixed;
+    left: 0;
     right: 0;
     top: 0;
+    text-align: right;
     overflow-y: auto; /* Enables scrolling if content overflows */
   }
   
@@ -20,6 +22,17 @@
   }
   
   .sidebar ul li a {
-    color: #0000EE;
+    color: #ffffff;
     text-decoration: none;
+  }
+
+  .sidebar a {
+    color: #ffffff;
+    text-decoration: none;
+  }
+
+  @media (max-width: 800px) { /* Adjust width as needed */
+    .sidebar {
+      display: none;
+    }
   }

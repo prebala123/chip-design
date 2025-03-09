@@ -20,7 +20,9 @@
       <h1 class="project-name">{{ page.title | default: site.title | default: site.github.repository_name }}</h1>
       <h2 class="project-tagline">{{ page.description | default: site.description | default: site.github.project_tagline }}</h2>
       {% if site.github.is_project_page %}
-        <a href="{{ site.github.repository_url }}" class="btn">View on GitHub</a>
+        <a href="{{ site.github.repository_url }}" class="btn">View Code</a>
+        <a href="https://drive.google.com/file/d/1BddhGLZktkJExe9oW0b1h9Z0j4cmBmBq/view?usp=sharing" class="btn">View Poster</a>
+        <a href="https://drive.google.com/file/d/1nZYiVPzXfb-aC8hjzOuZcXcoupDY665B/view?usp=sharing" class="btn">View Report</a>
       {% endif %}
       {% if site.show_downloads %}
         <a href="{{ site.github.zip_url }}" class="btn">Download .zip</a>
@@ -29,23 +31,11 @@
     </header>
 
     <div class="sidebar">
-        <h2>Sections</h2>
-        <ul>
-            <li><a href="{{ '/#introduction' | relative_url }}">Introduction</a></li>
-            <li><a href="{{ '/#exploration' | relative_url }}">Exploration</a></li>
-            <li><a href="{{ '/#explanation' | relative_url }}">Explanation</a></li>
-            <li><a href="{{ '/#experimentation' | relative_url }}">Experimentation</a></li>
-            <li><a href="{{ '/#conclusion' | relative_url }}">Conclusion</a></li>
-        </ul>
-        <h2>Research Question</h2>
-        <p> Chips are often modeled with a graph neural network (GNN) to represent the wires and nodes - is this a suitable approach? What are the strengths and limitations of this method, and can it be optimized? Are there alternative architectures that can improve speed or performance?
-        </p>
-        <h2>Useful Links</h2>
-        <ul>
-            <li><a href="https://en.wikipedia.org/wiki/Netlist">Netlist</a></li>
-            <li><a href="https://en.wikipedia.org/wiki/Graph_neural_network">GNN</a></li>
-            <li><a href="https://arxiv.org/abs/2404.00477">DEHNN</a></li>
-        </ul>
+            <a href="{{ '/#introduction' | relative_url }}">Introduction  &nbsp;&nbsp; </a> 
+            <a href="{{ '/#exploration' | relative_url }}">Exploration  &nbsp;&nbsp; </a>            
+            <a href="{{ '/#explanation' | relative_url }}">Explanation  &nbsp;&nbsp; </a>
+            <a href="{{ '/#experimentation' | relative_url }}">Experimentation  &nbsp;&nbsp; </a>
+            <a href="{{ '/#conclusion' | relative_url }}">Conclusion  &nbsp;&nbsp; </a>
     </div>
 
     <main id="content" class="main-content" role="main">

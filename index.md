@@ -139,7 +139,7 @@ Overall, these new approaches did not have as much success as the baseline DE-HN
 
 ### Feature Engineering (Adding Capacity)
 
-<img src="images/tree.png"/>
+<img src="images/capacity.png"/>
 
 Adding capacity only improved the performance of the DE-HNN model by 0.6%, showing that it did not have much of an impact on the model. We believe that this result follows our previous finding that the DE-HNN only learns from the graph structure and not the features. Since high capacity areas can be correlated with densely connected areas in the graph with a lot of cells nearby, the DE-HNN could be estimating capacity by itself without needing an explicit feature for it.
 

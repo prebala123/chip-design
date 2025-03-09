@@ -31,8 +31,21 @@
     text-decoration: none;
   }
 
+  .sidebar a:hover {
+    color: #f6ff4698;
+    text-decoration: none;
+  }
+
   @media (max-width: 800px) { /* Adjust width as needed */
     .sidebar {
       display: none;
     }
+  }
+
+  h1::before {
+    content: "";
+    display: block;
+    height: 100px; /* Adjust this value */
+    margin-top: -50px;
+    visibility: hidden;
   }

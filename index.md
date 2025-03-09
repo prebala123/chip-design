@@ -14,13 +14,7 @@ details summary {
 }
 </style>
 
-### Sections
-1. [Introduction](#introduction)
-1. [Exploration](#exploration)
-1. [Explanation](#explanation)
-1. [Experimentation](#experimentation)
-1. [Conclusion](#conclusion)
-
+<p> <a name="introduction"> </a> </p>
  
 # Introduction <a name="introduction"></a>
 
@@ -31,7 +25,9 @@ Chips are key components of many applications and tools, from mobile phones to s
 
 Given the relatively unexplored domain of machine learning for chip design, many recent attempts have tried to apply tools from different fields, which may not perfectly fit this specific use-case. For example, chip circuits are often represented as graphs in machine learning, and researchers must choose a specific kind of graph and the features within the graph. Our project aims to identify possible shortcomings in current chip representations and suggest possible improvements, which will allow for deeper and more accurate research in the future.
 
-# Exploration <a name="exploration"></a>
+<p> <a name="exploration"> </a> </p>
+
+# Exploration 
 
 ## Data
 
@@ -71,14 +67,16 @@ Demand is the amount of routing resources that need to pass through a GRC, and i
 
 These analyses reveal how routing resources are utilized across the design, identifying patterns and outliers. Most of the Superblue chips have a small fraction of regions with sizable demand; these regions have disproportionately large routing load, which makes them an important target for future machine learning models. 
 
+<p> <a name="explanation"> </a> </p>
 
-# Explanation <a name="explanation"></a>
+
+# Explanation
 
 Interpreting the GNN’s predictions is difficult. What features are driving the model’s demand prediction?
 
 ## Ablation Study
 
-First we wanted to determine the relative feature importances of each feature in the model in order to better understand how the DE-HNN model is making predictions and include some explainability in the process. One way we attempted this is by training a model with one feature removed at a time using both the DE-HNN and a Random Forest in order to see how much the loss increased, then ranking the features by their impact on the model.
+We wanted to determine the relative importances of each feature in the model to better understand how the DE-HNN model is making predictions. We first implement an ablation study. By inspecting the model’s performance by dropping one feature at a time, we can rank the features by their impact on the model. 
 
 The features that we work with are
 - Cell type - the type of logic gate that the instance is
@@ -91,22 +89,25 @@ The features that we work with are
 
 <img src="images/ablation_forest.png"/>
 
-From the results of this ablation study, we can see that the most important features are the eigenvectors, degree distribution, and persistence diagram. Since these are all the topological features that relate to graph structure it makes sense that the connections themselves may be more important than the cell features. If we remove all of the topological features at once, the performance worsens by 74.4% further showing that the graph structure is crucial to predicting congestion.
+This ablation study showed that the most important features are the eigenvectors, degree distribution, and persistence diagram. Since these are all the topological features that relate to graph structure it makes sense that the connections themselves may be more important than the cell features. If we remove all of the topological features at once, the performance worsens by 74.4% further showing that the graph structure is crucial to predicting congestion.
 
 
 ## SHAP Analysis
 
-Another way to quantify feature importances is with SHAP, or SHapley Additive exPlanations. SHAP is a game-theory based method for explaining a machine learning model’s predictions by calculating the impact of each feature in every prediction, and provides both a magnitude and direction for a feature’s effect. 
+Another way to quantify feature importances is with SHAP, or SHapley Additive exPlanations. SHAP is a game-theory-based method for explaining a machine learning model’s predictions by calculating the impact of each feature in every prediction, and provides both a magnitude and direction for a feature’s effect. 
 
-We ran the SHAP algorithm on a LightGBM model using the same train/test split as in the baseline, and generated the feature importances for both the node and net level predictions. Figure (ADD FIG NUM) shows the resulting summary plot for the node features, where the colors of each dot represent their value for an individual datapoint, and their position on the axis represents their impact on the model output.
+We ran the SHAP algorithm on a LightGBM model using the same train/test split as in the baseline, and generated the feature importances.
+
 
 <img src="images/shap_node.png"/>
 
-This SHAP plot for the node predictions supports the findings from the previous ablation study; the eight most impactful features are eigenvectors, and all ten eigenvectors are within the top twelve out of the 45 total features. It is also interesting to note that despite the eigenvectors being previously generated with a specific ranking in terms of information captured, the top eigenvectors are not necessarily the most impactful. We are unable to perform significant analysis on the directionality of each feature's impact, as the eigenvectors are simply embeddings of the graph structure, but knowledge of the eigenvectors’ relative importance can help guide future experiments. 
+This SHAP plot for the node predictions supports the findings from the previous ablation study; the eight most impactful features are eigenvectors, and all ten eigenvectors are within the top twelve out of the 45 total features. We are unable to perform significant analysis on the directionality of each feature's impact, as the eigenvectors are simply embeddings of the graph structure, but knowledge of the eigenvectors’ relative importance can help guide future experiments. 
 
-# Experimentation <a name="experimentation"></a>
+<p> <a name="experimentation"> </a> </p>
 
-Following our initial EDA and attempts at drawing insight on the baseline model through explainable AI methods, we constructed a set of informed experiments to tackle key issues with the baseline model: a long runtime, a lack of generalizability, and limited learning on the node and net features.
+# Experimentation
+
+Following our initial EDA and attempts at drawing insight on the baseline model through explainable AI methods, we constructed a set of informed experiments to tackle key issues with the baseline model: long runtime, lack of generalizability, and limited learning on the node and net features.
 
 
 ## LightGBM
@@ -209,8 +210,9 @@ The hypervector model should be much faster to train than the GNN, while being s
 ### Finding
 We found integrating HDC in place of embeddings is faster and more memory efficient, although there were accuracy trade-offs. There is thus a potential accuracy trade-off: HDC might sacrifice a bit of peak accuracy in exchange for huge gains in speed and memory. This is reflected in the results in the classification of congested nodes which were in the 70s to 80s in accuracy.
 
+<p> <a name="conclusion"> </a> </p>
 
-# Conclusion <a name="conclusion"></a>
+# Conclusion
 
 The success of alternate representations of a chip design, through downsampling and subpartitioning, suggest that the full graph structure is too complex for the GNN to model. As it stands, we believe local and global information is still not easily propagated through the model. Our experiments validate two methods to reduce noise and improve generalizability on different levels of granularity. Downsampling “simplifies” the graph while mimicking its original characteristics (through effective stratified sampling). Each design likely shares similar overarching characteristics. Downsampling attempts to capture this larger structure while limiting the various sources of noise present throughout the dense network of each chip. Subpartitioning, on the other hand, more strictly adheres to the chip design, but prioritizes local dependencies with the belief that these structures are representative of smaller blocks common within all designs. Both of these methods reduce the complexity and overall size of the dataset, resulting in a drop in required computing resources and faster training. 
 

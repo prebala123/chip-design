@@ -5,11 +5,12 @@ This portion of the code is a bit more involved, and requires running some prepr
 ```
 |
 └───subpartitioning
+|   |   README_SUB.md
 |   |   create_eigen_sub.py
 |   |   gen_subpartitions.py
 |   |   h_dataset_sub.py
 |   |   pyg_dataset_sub.py
-|   |   README_SUB.md
+|   |   run_all_data.py
 └───└───train_all_cross.py
 ```
 

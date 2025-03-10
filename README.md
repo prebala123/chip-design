@@ -21,11 +21,20 @@ Our work is an extension of the work done in the following paper:
 |   |   models
 |   |   |   encoders
 |   |   └───layers
+|   |   subpartitioning
+|   |   |   README_SUB.md
+|   |   |   create_eigen_sub.py
+|   |   |   gen_subpartitions.py
+|   |   |   pyg_dataset_sub.py
+|   |   |   run_all_data.py
+|   |   └───train_all_cross.py
 |   |   config.json
+|   |   downsampling.ipynb
+|   |   hypervector.py
 |   |   pyg_dataset.py
 |   |   run_all_data.py
-|   |   train_all_cross.py
-|   └───visualization.py
+|   |   run_baseline.py
+|   └───tree_modeling.ipynb
 └───README.md
 └───cuda_related_package.txt
 └───requirements.txt
@@ -40,9 +49,13 @@ Our work is an extension of the work done in the following paper:
 
 (4) ```run_all_data.py``` takes in raw chip data and engineers features that go into the model
 
-(5) ```train_demand.py``` initializes the model with the given hyperparameters, then trains for a set number of epochs. It saves the metrics from training as well as the final model file
+(5) ```run_baseline.py``` initializes the baseline model with the given hyperparameters, then trains for a set number of epochs. It saves the metrics from training as well as the final model file
 
-(6) ```visualization.py``` converts each experiment's metrics into graphs for better visualization and comparison between runs
+(6) ```hypervectors.py``` measures similarity across features in hypervector representation
+
+(7) ```downsampling.ipynb``` downsamples the dataset according to defined bins and modifies the dataset. It then trains the model in the same way as ```run_baseline.py```
+
+(8) ```tree_modeling.ipynb``` experiments with LightGBM and Random Forest approaches to the demand regression problem. It also creates SHAP plots. 
 
 ## Environment Setup
 

@@ -6,7 +6,7 @@ Our work is an extension of the work done in the following paper:
 "DE-HNN: An effective neural model for Circuit Netlist representation.
  Z. Luo, T. Hy, P. Tabaghi, D. Koh, M. Defferrard, E. Rezaei, R. Carey, R. Davis, R. Jain and Y. Wang. 27th Intl. Conf. Artificial Intelligence and Statistics (AISTATS), 2024." [arxiv](https://arxiv.org/abs/2404.00477)
 
- The results of our work can be found on our website [here](https://prebala123.github.io/chip-design/).
+ The results of our work can be found on our website [here](https://prebala123.github.io/chip-design/), and our report can be found [here](https://github.com/ndamle2/artifact-directory-B12/blob/main/report.pdf).
 
 ## Folder Structure
 

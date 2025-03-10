@@ -101,15 +101,17 @@ After dataset are created and saved, next, go to "/src" directory
 In the file **"config.json"**, you can set the hyperparameters and config for the model you want to train. Then, run the following file to start the training process.
 
 ```commandline
-python train_all_cross.py
+python run_baseline.py
 ```
 
-The metrics from training the model will be saved to the directory **"/results/baselines"** as a csv file. To create plots to compare different model runs, go to the file **"visualization.py"** and change the variables shown by the comments at the top to generate the right plot for the data. Then run
+The metrics from training the model will be saved to the directory **"/results/baselines"** as a csv file. 
 
-```commandline
-python visualization.py
-```
+### Running Downsampling and Tree-Modeling
+To perform downsampling, run the cells in ```downsampling.ipynb```. The outputs from the downsampled model will also be saved to the directory **"/results/baselines"** as a csv file.
 
-This will save the figures to **"/results/plots"** where you can view them.
+To perform Tree-Modeling, run the cells in ```tree_modeling.ipynb```. The resulting SHAP plots will be saved to the directory **"/results/plots"**
+
+### Running Subpartitioning
+To perform subpartitioning, see the readme in ```/src/subpartioning```.
 
 Thank you for running our project!

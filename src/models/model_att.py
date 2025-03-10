@@ -24,9 +24,8 @@ from torch_geometric.utils import (
 )
 
 import sys
-sys.path.append("./layers/")
-from dehnn_layers import HyperConvLayer
-from dgnn_layers import DiGraphConvLayer
+from models.layers.dehnn_layers import HyperConvLayer
+from models.layers.dgnn_layers import DiGraphConvLayer
 
 from torch_geometric.utils.dropout import dropout_edge
 

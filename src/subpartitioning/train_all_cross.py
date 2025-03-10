@@ -26,7 +26,8 @@ import sys
 from pyg_dataset_sub import NetlistDataset as NetlistDatasetSub # type: ignore
 # from pyg_dataset import NetlistDataset # type: ignore
 
-sys.path.append(os.path.join('..', 'models', 'layers'))
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(parent_dir)
 from models.model_att import GNN_node
 
 import matplotlib.pyplot as plt
@@ -266,7 +267,7 @@ if __name__ == '__main__':
     aggr = "add" #use aggregation as one of ["add", "max"]
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     learning_rate = 0.00001
-    epochs = 100
+    epochs = 1
 
     sample_prop = 0.8
 

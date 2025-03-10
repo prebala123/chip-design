@@ -7,7 +7,6 @@ from tqdm import tqdm
 import pickle
 import numpy as np
 
-from utils import *
 from gen_subpartitions import *
 
 class NetlistDataset(Dataset):

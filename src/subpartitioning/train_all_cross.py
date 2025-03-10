@@ -267,7 +267,7 @@ if __name__ == '__main__':
     aggr = "add" #use aggregation as one of ["add", "max"]
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     learning_rate = 0.00001
-    epochs = 1
+    epochs = 100
 
     sample_prop = 0.8
 

@@ -86,7 +86,18 @@ The features that we work with are:
 - Degree Distribution - A local view of the graph, counting the number of neighbors at increasing distances
 - Persistence Diagram - A summary of topological features encoding growing neighborhood around a node
 
-<img src="images/ablation_forest.png"/>
+| Feature                 | RMSE  | % Change |
+|-------------------------|------:|---------:|
+| Baseline               | 5.313 | -        |
+| Cell Type             | 5.354 | +0.8     |
+| Height                | 5.379 | +1.2     |
+| Width                 | 5.374 | +1.1     |
+| Orientation           | 5.366 | +1.0     |
+| Degree                | 5.322 | +0.2     |
+| Eigenvectors         | 6.234 | +17.3    |
+| Degree Distribution  | 5.653 | +6.4     |
+| Persistence Diagram  | 5.425 | +2.1     |
+| All topological features | 9.267 | +74.4    |
 
 This ablation study showed that the most important features are the eigenvectors, degree distribution, and persistence diagram. Since these are all the topological features that relate to graph structure it makes sense that the connections themselves may be more important than the cell features. If we remove all of the topological features at once, the performance worsens by 74.4% further showing that the graph structure is crucial to predicting congestion.
 
@@ -98,7 +109,7 @@ Another way to quantify feature importances is with SHAP, or SHapley Additive ex
 We ran the SHAP algorithm on a LightGBM model using the same train/test split as in the baseline, and generated the feature importances.
 
 
-<img src="images/shap_node.png"/>
+<img src="images/shap.png" width="500"/>
 
 This SHAP plot supports the findings from the previous ablation study; the eight most impactful features are eigenvectors, and all ten eigenvectors are within the top twelve out of the 45 total features. We are unable to perform significant analysis on the directionality of each feature's impact, as the eigenvectors are simply embeddings of the graph structure, but knowledge of the eigenvectors’ relative importance can help guide future experiments. 
 
@@ -118,7 +129,11 @@ Although these models would not have any information about the connections in th
 
 ### Finding
 
-<img src="images/tree.png"/>
+| Model          | Training RMSE | Validation RMSE | Test RMSE | Training Time (min) |
+|----------------|---------------|-----------------|-----------|---------------------|
+| Baseline GNN   | 17.23         | 5.01            | 6.40      | 41.97               |
+| LightGBM       | 10.89         | 8.52            | 13.45     | 0.46                |
+| Random Forest  | 10.73         | 7.83            | 11.03     | 10.81               |
 
 We experimented with two tree-based modeling architectures, LightGBM and Random Forest. For each model, we ran a grid search to optimize it, and settled on the final hyperparameters used to generate the results in the table.
 
@@ -133,10 +148,17 @@ Although the DE-HNN does well at capturing the graph structure, it doesn’t lea
 We hypothesize that including capacity will improve the performance of the model over the baseline. Further, we hypothesize that the LightGBM models will improve due to its reliance on the feature set.
 
 
-<img src="images/demand_capacity.png"/>
+<img src="images/demand_capacity.png" width="500"/>
 
 ### Finding
-<img src="images/capacity.png"/>
+<img src="images/capacity.png" width="500"/>
+
+| Model               | Training RMSE | Validation RMSE | Test RMSE | Training Time (min) |
+|---------------------|---------------|-----------------|-----------|---------------------|
+| Baseline GNN        | 17.23         | 5.01            | 6.40      | 41.97               |
+| GNN + Capacity      | 17.21         | 5.01            | 6.36      | 42.00               |
+| LightGBM            | 10.89         | 8.52            | 13.45     | 0.46                |
+| LightGBM + Capacity | 10.19         | 5.98            | 7.86      | 0.49                |
 
 Adding capacity only improved the performance of the DE-HNN model by 0.6%, showing that it did not have much of an impact on the model. This result follows our previous finding that the DE-HNN only learns from the graph structure and not the features. Since high capacity areas are correlated with densely connected areas in the graph, the DE-HNN may already be estimating capacity without needing an explicit feature for it.
 
@@ -165,7 +187,12 @@ This strategy resulted in 1000 “new” graphs, potentially representing functi
 Chip designs likely share certain substructures, which better encapsulate local dependencies causing congestion.
 
 ### Finding
-<img src="images/partitioning.png"/>
+<img src="images/partitioning.png" width="500"/>
+
+| Model            | Training RMSE | Validation RMSE | Test RMSE | Training Time (min) |
+|------------------|---------------|-----------------|-----------|---------------------|
+| Baseline GNN     | 17.23         | 5.01            | 6.40      | 41.97               |
+| Subpartitioning  | 15.82         | 4.38            | 5.92      | 18.38               |
 
 Subpartitioning noticeably improves performance, while significantly reducing training time and required memory. In initial experiments, we observed that the loss plots were highly erratic and failed to converge, due to the increased amount of training graphs. Reducing the learning rate by a factor of 100 allowed the model to quickly and smoothly converge. In fact, we see the model achieve a lower test loss than the baseline model. These results suggest that reducing the problem was a viable strategy and allowed the GNN to better capture local dependencies. We believe the model learned to identify smaller common networks in the chip, aided by, importantly, training on smaller, cohesive graphs.
 
@@ -181,7 +208,12 @@ To try and create a more representative model that derives learnings relevant to
 From this downsampling process, we hypothesized that we would be able to improve generalize to more chips, while preventing overfitting. We also expected that a reduced dataset size would improve the runtime.
 
 ### Finding
-<img src="images/downsampling.png"/>
+<img src="images/downsampling.png" width="500"/>
+
+| Model          | Training RMSE | Validation RMSE | Test RMSE | Training Time (min) |
+|----------------|---------------|-----------------|-----------|---------------------|
+| Baseline GNN   | 17.23         | 5.01            | 6.40      | 41.97               |
+| Downsampling   | 20.84         | 4.87            | 6.36      | 19.85               |
 
 Downsampling slightly reduced both the validation and test RMSE, suggesting that this method did help the model generalize slightly better. Even though the downsampled dataset was slightly different every time, due to random sampling, these results were relatively consistent. The larger improvement, however, was in terms of the training time, which was cut in half. This is driven by the significantly reduced dataset, not just in terms of the number of nodes, but also the connections between them. In addition, the model trained on the downsampled dataset converged slightly faster.
 

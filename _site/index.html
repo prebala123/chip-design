@@ -143,7 +143,67 @@ This particular chip’s demand histogram is also narrow and somewhat centered a
   <li>Persistence Diagram - A summary of topological features encoding growing neighborhood around a node</li>
 </ul>
 
-<p><img src="images/ablation_forest.png" /></p>
+<table>
+  <thead>
+    <tr>
+      <th>Feature</th>
+      <th style="text-align: right">RMSE</th>
+      <th style="text-align: right">% Change</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Baseline</td>
+      <td style="text-align: right">5.313</td>
+      <td style="text-align: right">-</td>
+    </tr>
+    <tr>
+      <td>Cell Type</td>
+      <td style="text-align: right">5.354</td>
+      <td style="text-align: right">+0.8</td>
+    </tr>
+    <tr>
+      <td>Height</td>
+      <td style="text-align: right">5.379</td>
+      <td style="text-align: right">+1.2</td>
+    </tr>
+    <tr>
+      <td>Width</td>
+      <td style="text-align: right">5.374</td>
+      <td style="text-align: right">+1.1</td>
+    </tr>
+    <tr>
+      <td>Orientation</td>
+      <td style="text-align: right">5.366</td>
+      <td style="text-align: right">+1.0</td>
+    </tr>
+    <tr>
+      <td>Degree</td>
+      <td style="text-align: right">5.322</td>
+      <td style="text-align: right">+0.2</td>
+    </tr>
+    <tr>
+      <td>Eigenvectors</td>
+      <td style="text-align: right">6.234</td>
+      <td style="text-align: right">+17.3</td>
+    </tr>
+    <tr>
+      <td>Degree Distribution</td>
+      <td style="text-align: right">5.653</td>
+      <td style="text-align: right">+6.4</td>
+    </tr>
+    <tr>
+      <td>Persistence Diagram</td>
+      <td style="text-align: right">5.425</td>
+      <td style="text-align: right">+2.1</td>
+    </tr>
+    <tr>
+      <td>All topological features</td>
+      <td style="text-align: right">9.267</td>
+      <td style="text-align: right">+74.4</td>
+    </tr>
+  </tbody>
+</table>
 
 <p>This ablation study showed that the most important features are the eigenvectors, degree distribution, and persistence diagram. Since these are all the topological features that relate to graph structure it makes sense that the connections themselves may be more important than the cell features. If we remove all of the topological features at once, the performance worsens by 74.4% further showing that the graph structure is crucial to predicting congestion.</p>
 
@@ -153,7 +213,7 @@ This particular chip’s demand histogram is also narrow and somewhat centered a
 
 <p>We ran the SHAP algorithm on a LightGBM model using the same train/test split as in the baseline, and generated the feature importances.</p>
 
-<p><img src="images/shap_node.png" /></p>
+<p><img src="images/shap.png" width="500" /></p>
 
 <p>This SHAP plot supports the findings from the previous ablation study; the eight most impactful features are eigenvectors, and all ten eigenvectors are within the top twelve out of the 45 total features. We are unable to perform significant analysis on the directionality of each feature’s impact, as the eigenvectors are simply embeddings of the graph structure, but knowledge of the eigenvectors’ relative importance can help guide future experiments.</p>
 
@@ -172,7 +232,40 @@ This particular chip’s demand histogram is also narrow and somewhat centered a
 
 <h3 id="finding">Finding</h3>
 
-<p><img src="images/tree.png" /></p>
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Training RMSE</th>
+      <th>Validation RMSE</th>
+      <th>Test RMSE</th>
+      <th>Training Time (min)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Baseline GNN</td>
+      <td>17.23</td>
+      <td>5.01</td>
+      <td>6.40</td>
+      <td>41.97</td>
+    </tr>
+    <tr>
+      <td>LightGBM</td>
+      <td>10.89</td>
+      <td>8.52</td>
+      <td>13.45</td>
+      <td>0.46</td>
+    </tr>
+    <tr>
+      <td>Random Forest</td>
+      <td>10.73</td>
+      <td>7.83</td>
+      <td>11.03</td>
+      <td>10.81</td>
+    </tr>
+  </tbody>
+</table>
 
 <p>We experimented with two tree-based modeling architectures, LightGBM and Random Forest. For each model, we ran a grid search to optimize it, and settled on the final hyperparameters used to generate the results in the table.</p>
 
@@ -185,10 +278,52 @@ This particular chip’s demand histogram is also narrow and somewhat centered a
 <h3 id="hypothesis-1">Hypothesis</h3>
 <p>We hypothesize that including capacity will improve the performance of the model over the baseline. Further, we hypothesize that the LightGBM models will improve due to its reliance on the feature set.</p>
 
-<p><img src="images/demand_capacity.png" /></p>
+<p><img src="images/demand_capacity.png" width="500" /></p>
 
 <h3 id="finding-1">Finding</h3>
-<p><img src="images/capacity.png" /></p>
+<p><img src="images/capacity.png" width="500" /></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Training RMSE</th>
+      <th>Validation RMSE</th>
+      <th>Test RMSE</th>
+      <th>Training Time (min)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Baseline GNN</td>
+      <td>17.23</td>
+      <td>5.01</td>
+      <td>6.40</td>
+      <td>41.97</td>
+    </tr>
+    <tr>
+      <td>GNN + Capacity</td>
+      <td>17.21</td>
+      <td>5.01</td>
+      <td>6.36</td>
+      <td>42.00</td>
+    </tr>
+    <tr>
+      <td>LightGBM</td>
+      <td>10.89</td>
+      <td>8.52</td>
+      <td>13.45</td>
+      <td>0.46</td>
+    </tr>
+    <tr>
+      <td>LightGBM + Capacity</td>
+      <td>10.19</td>
+      <td>5.98</td>
+      <td>7.86</td>
+      <td>0.49</td>
+    </tr>
+  </tbody>
+</table>
 
 <p>Adding capacity only improved the performance of the DE-HNN model by 0.6%, showing that it did not have much of an impact on the model. This result follows our previous finding that the DE-HNN only learns from the graph structure and not the features. Since high capacity areas are correlated with densely connected areas in the graph, the DE-HNN may already be estimating capacity without needing an explicit feature for it.</p>
 
@@ -216,7 +351,35 @@ This strategy resulted in 1000 “new” graphs, potentially representing functi
 <p>Chip designs likely share certain substructures, which better encapsulate local dependencies causing congestion.</p>
 
 <h3 id="finding-2">Finding</h3>
-<p><img src="images/partitioning.png" /></p>
+<p><img src="images/partitioning.png" width="500" /></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Training RMSE</th>
+      <th>Validation RMSE</th>
+      <th>Test RMSE</th>
+      <th>Training Time (min)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Baseline GNN</td>
+      <td>17.23</td>
+      <td>5.01</td>
+      <td>6.40</td>
+      <td>41.97</td>
+    </tr>
+    <tr>
+      <td>Subpartitioning</td>
+      <td>15.82</td>
+      <td>4.38</td>
+      <td>5.92</td>
+      <td>18.38</td>
+    </tr>
+  </tbody>
+</table>
 
 <p>Subpartitioning noticeably improves performance, while significantly reducing training time and required memory. In initial experiments, we observed that the loss plots were highly erratic and failed to converge, due to the increased amount of training graphs. Reducing the learning rate by a factor of 100 allowed the model to quickly and smoothly converge. In fact, we see the model achieve a lower test loss than the baseline model. These results suggest that reducing the problem was a viable strategy and allowed the GNN to better capture local dependencies. We believe the model learned to identify smaller common networks in the chip, aided by, importantly, training on smaller, cohesive graphs.</p>
 
@@ -230,7 +393,35 @@ This strategy resulted in 1000 “new” graphs, potentially representing functi
 <p>From this downsampling process, we hypothesized that we would be able to improve generalize to more chips, while preventing overfitting. We also expected that a reduced dataset size would improve the runtime.</p>
 
 <h3 id="finding-3">Finding</h3>
-<p><img src="images/downsampling.png" /></p>
+<p><img src="images/downsampling.png" width="500" /></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Training RMSE</th>
+      <th>Validation RMSE</th>
+      <th>Test RMSE</th>
+      <th>Training Time (min)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Baseline GNN</td>
+      <td>17.23</td>
+      <td>5.01</td>
+      <td>6.40</td>
+      <td>41.97</td>
+    </tr>
+    <tr>
+      <td>Downsampling</td>
+      <td>20.84</td>
+      <td>4.87</td>
+      <td>6.36</td>
+      <td>19.85</td>
+    </tr>
+  </tbody>
+</table>
 
 <p>Downsampling slightly reduced both the validation and test RMSE, suggesting that this method did help the model generalize slightly better. Even though the downsampled dataset was slightly different every time, due to random sampling, these results were relatively consistent. The larger improvement, however, was in terms of the training time, which was cut in half. This is driven by the significantly reduced dataset, not just in terms of the number of nodes, but also the connections between them. In addition, the model trained on the downsampled dataset converged slightly faster.</p>
 

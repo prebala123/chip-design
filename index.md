@@ -43,12 +43,16 @@ We used 12 Superblue circuits from (Viswanathan et al., 2011, 2012). These circu
 
 ## Baseline Model
 
+<img src="images/gnn.png" width="500"/>
+
 We extended research into the DE-HNN (Directional Equivariant Hypergraph Neural Network) model architecture, a framework for learning circuit properties from netlist graphs. The DE-HNN model implemented by Luo et al. is as a message-passing neural network on a directed hypergraph. Importantly, it makes use of injected virtual nodes that simplify the graph structure by forcefully adding connections between topologically nearby nodes.  
 
 
-<img src="images/baseline.png"/>
+<img src="images/baseline.png" width="500"/>
 
 Our work was benchmarked against, and later built upon, a two layer DE-HNN model, with a node dimension of 16 in each layer, and virtual nodes. The dataset for this model used Superblue 18 and 19 as validation/test chips, and the remaining 10 chips served as training data, although we conducted an analysis that showed that most configurations of a train/test split had similar results. This baseline model had validation and test RMSE converging at around 6.4.
+
+
 
 
 ## Exploratory Data Analysis
@@ -199,7 +203,7 @@ Subpartitioning noticeably improves performance, while significantly reducing tr
 
 ## Downsampling
 
-In our EDA, we noticed that the demand variable is bimodal, with a smaller peak between 0 and 5 and a much larger peak between 15 and 20 (refer to \ref{fig:heatmap_histogram}b). In conducting an error analysis on the baseline model, we noticed that it generally did well at predicting values around the larger peak, but failed to recognize the second common range of values. 
+In our EDA, we noticed that the demand variable is bimodal, with a smaller peak between 0 and 5 and a much larger peak between 15 and 20. In conducting an error analysis on the baseline model, we noticed that it generally did well at predicting values around the larger peak, but failed to recognize the second common range of values. 
 
 To try and create a more representative model that derives learnings relevant to the full dataset, we decided to implement downsampling - a process in which the training data is binned by the target variable, and each bin is randomly sampled to ensure equal sizes. This ensures that the dataset is balanced across the distribution of the target variable, and will ideally allow us to improve the model’s performance. Choosing the number of bins and the bounds of each bin was an important task, as these outputs could significantly alter the final model’s predictions. To ensure a balanced dataset, while minimizing the amount of data removed, we performed a parameter sweep over the bin count and size. We also ensured that the edges also matched the new, smaller dataset by removing connections that involved a removed node, which may have damaged local structures, but helped shrink the overall dataset. 
 

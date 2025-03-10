@@ -31,19 +31,19 @@ Given the relatively unexplored domain of machine learning for chip design, many
 
 ## Data
 
-We used 12 Superblue circuits from (Viswanathan et al., 2011, 2012). These circuits were used in the original DE-HNN paper, and will be used to remain consistent with our baseline model. Each netlist ranges from 400,000 to 1,300,000 nodes and is extremely complex.
-
-<details>
-<summary>What is a netlist?</summary>
-<br>
-A netlist is a representation of electronic circuits where we represent connections between instances and nets. Instances contain the logic of the circuits and nets are the connections between them. They can be represented as a bipartite graph with both instances and nets being nodes, for better message passing in the GNN.
+A circuit netlist is a representation of electronic circuits containing the logic gates that make it up. The Superblue dataset depicts the logic gates (nodes) and the wires connecting them (edges), which intuitively leads to a graph representation. We represent the designs as hypergraphs, where nodes correspond to circuit cells (logic gates or blocks), and nets are modeled as hyperedges that connect one driver cell to multiple sink cells.
 <img src="images/netlist.png"/>
 <small> Source: https://arxiv.org/pdf/2404.00477 </small>
+
+<details>
+<summary>Our specific circuits</summary>
+<br>
+We used 12 Superblue circuits from (Viswanathan et al., 2011, 2012). These circuits were used in the original DE-HNN paper, and will be used to remain consistent with our baseline model. Each netlist ranges from 400,000 to 1,300,000 nodes and is extremely complex.
 </details>
 
 ## Baseline Model
 
-We extended research into the DE-HNN (Directional Equivariant Hypergraph Neural Network) (Luo et al. 2024) model architecture, a framework for learning circuit properties from netlist graphs. The DE-HNN model implemented by Luo et al. is as a message-passing neural network on a directed hypergraph. Importantly, it makes use of injected virtual nodes that simplify the graph structure by forcefully adding connections between topologically nearby nodes. The Superblue dataset depicts the logic gates (nodes) and the wires connecting them (edges), which intuitively leads to a graph representation. Luo et al. represent the designs as hypergraphs, where nodes correspond to circuit cells (logic gates or blocks), and nets are modeled as hyperedges that connect one driver cell to multiple sink cells. 
+We extended research into the DE-HNN (Directional Equivariant Hypergraph Neural Network) model architecture, a framework for learning circuit properties from netlist graphs. The DE-HNN model implemented by Luo et al. is as a message-passing neural network on a directed hypergraph. Importantly, it makes use of injected virtual nodes that simplify the graph structure by forcefully adding connections between topologically nearby nodes.  
 
 
 <img src="images/baseline.png"/>
@@ -53,35 +53,34 @@ Our work was benchmarked against, and later built upon, a two layer DE-HNN model
 
 ## Exploratory Data Analysis
 
-Visualizing routing congestion is a key early step in the physical design process. We started by creating a heatmap of congestion across the chip to illustrate where the design is over-stressed. The darker areas in Figure 1 indicate regions where the number of required routing tracks exceed availability. In practice, these maps can highlight issues such as too many cells being bunched near a macro pin or a channel, with multiple long nets running through, and is also relevant in machine learning contexts when considering the importance of identifying repeating graph substructures.
+<img src="images/demand_heatmap.png"/>
 
-
-
-<img src="images/heatmap.png"/>
-
-Demand is the amount of routing resources that need to pass through a GRC, and is a target variable  in our congestion prediction tasks. We visualized the routing demand distribution – the number of routing tracks necessary in each region of the chip — with a histogram (Figure 2). In the Superblue 18 circuit, demand seems to be bimodal with most demand concentrated around 3 and 17.  This particular chip’s demand histogram is also narrow and somewhat centered at one of the peaks, which indicates the routing load is relatively balanced across the chip. In contrast, demand distributions on other chips followed a wide or skewed distribution with significant outliers, which indicates uneven routing resource usage or poor design.
-
-
-<img src="images/demand.png"/>
-
-
+We started by creating a heatmap of congestion across Superblue 18 (our validation chip) to illustrate where the demand approaches or exceeds the physical capacity of the chip. We also visualized its routing demand distribution – the number of routing tracks necessary in each region of the chip - with a histogram.
 These analyses reveal how routing resources are utilized across the design, identifying patterns and outliers. Most of the Superblue chips have a small fraction of regions with sizable demand; these regions have disproportionately large routing load, which makes them an important target for future machine learning models. 
+
+<details>
+<summary>More Analysis</summary>
+<br>
+In practice, these maps can highlight issues such as too many cells being bunched near a macro pin or a channel, with multiple long nets running through, and is also relevant in machine learning contexts when considering the importance of identifying repeating graph substructures.
+This particular chip’s demand histogram is also narrow and somewhat centered at one of the peaks, which indicates the routing load is relatively balanced across the chip. In contrast, demand distributions on other chips followed a wide or skewed distribution with significant outliers, which indicates uneven routing resource usage or poor design.
+
+</details>
 
 <p> <a name="explanation"> </a> </p>
 
 
 # Explanation
 
-Interpreting the GNN’s predictions is difficult. What features are driving the model’s demand prediction?
+Interpreting the DE-HNN model's predictions is difficult because we don't understand how it interprets the features to make a prediction about the demand in different parts of the chip. To get a better idea of what features are impacting predictions the most and how, we conducted an ablation study and SHAP analysis.
 
 ## Ablation Study
 
-We wanted to determine the relative importances of each feature in the model to better understand how the DE-HNN model is making predictions. We first implement an ablation study. By inspecting the model’s performance by dropping one feature at a time, we can rank the features by their impact on the model. 
+We first implement an ablation study. By inspecting the model’s performance by dropping one feature at a time, we can rank the features by their impact on the model's performance. More important features should worsen the model more when removed. 
 
-The features that we work with are
-- Cell type - the type of logic gate that the instance is
-- Width and height - physical dimensions of the cell
-- Orientation - based on the rotation of the cell
+The features that we work with are:
+- Cell type - The type of logic gate ex. AND, OR
+- Width and height - Physical dimensions of the cell
+- Orientation - Rotation of the cell
 - Degree - The number of nets a cell is a part of
 - Eigenvectors - Spatial embeddings that reveal clusters in the graph
 - Degree Distribution - A local view of the graph, counting the number of neighbors at increasing distances
@@ -101,7 +100,7 @@ We ran the SHAP algorithm on a LightGBM model using the same train/test split as
 
 <img src="images/shap_node.png"/>
 
-This SHAP plot for the node predictions supports the findings from the previous ablation study; the eight most impactful features are eigenvectors, and all ten eigenvectors are within the top twelve out of the 45 total features. We are unable to perform significant analysis on the directionality of each feature's impact, as the eigenvectors are simply embeddings of the graph structure, but knowledge of the eigenvectors’ relative importance can help guide future experiments. 
+This SHAP plot supports the findings from the previous ablation study; the eight most impactful features are eigenvectors, and all ten eigenvectors are within the top twelve out of the 45 total features. We are unable to perform significant analysis on the directionality of each feature's impact, as the eigenvectors are simply embeddings of the graph structure, but knowledge of the eigenvectors’ relative importance can help guide future experiments. 
 
 <p> <a name="experimentation"> </a> </p>
 
@@ -112,35 +111,37 @@ Following our initial EDA and attempts at drawing insight on the baseline model 
 
 ## LightGBM
 
-As previously mentioned, we noticed that the baseline DE-HNN model was not learning from the node and net features, and was instead only making predictions based on the structure of the graph, formed by the millions of connections in the training dataset. From our earlier analysis, however, we knew that there is some value in the features, and they can also serve as a representation of the greater graph structure, such as through the eigenvectors. This led us to considering tree-based models as an alternative architecture for the net demand prediction task. 
+As previously shown, there are several useful features in our dataset for making predictions on demand. However, the millions of nodes and nets in the graph means training the DE-HNN is slow, leading to real world problems like delays in chip design. This led us to considering tree-based models as an alternative architecture for this task.
 
 ### Hypothesis
-These models would only have the net features as a dataset (eigenvectors and degree), but we hypothesized that they would reduce training time due to a tabular data structure rather than a dense graph. 
+Although these models would not have any information about the connections in the graph lowering prediction accuracy, we hypothesized that they would reduce training time due to the tabular data structure. 
 
 ### Finding
 
 <img src="images/tree.png"/>
 
-We experimented with two tree-based modeling architectures, LightGBM and Random Forest. For each model, we ran a grid search to optimize for Validation RMSE + Test RMSE, to settle on the final hyperparameters used to generate the results in table (ADD TABLE NUMBER).
+We experimented with two tree-based modeling architectures, LightGBM and Random Forest. For each model, we ran a grid search to optimize it, and settled on the final hyperparameters used to generate the results in the table.
 
 Overall, these new approaches did not have as much success as the baseline DE-HNN model, likely because there is importance in the connections between nodes that simply isn’t captured by the feature set. However, the tree-models trained significantly faster, with the LightGBM model training nearly 100x faster than the baseline DE-HNN, and the Random Forest model about 4x faster (but with slightly less loss in performance). This suggests that there may be some value in further exploring this approach, especially with further optimizations or feature enhancements.
 
 
 ## Feature Engineering (Adding Capacity)
 
-Although the DE-HNN does well at capturing the graph structure, it doesn’t learn much from the node and net features. Therefore, we wanted to try adding a new feature called capacity into the model to see if it could perform better. Capacity is a rough estimate of the amount of resources available for placing cells and routing wires in a given area. We believe that the DE-HNN model can learn the interactions between capacity and dense topology, to learn that areas with low capacity but a large cluster of cells tend to be more congested. We hypothesize that the DE-HNN model will improve its performance compared to the baseline, because of this new feature. 
+Although the DE-HNN does well at capturing the graph structure, it doesn’t learn much from the features. Therefore, we wanted to try adding a new feature called capacity into the model to see if it could perform better. Capacity is a rough estimate of the amount of resources available for placing cells and routing wires in a given area. We believe that the DE-HNN model can learn the interactions between capacity and dense topology, to learn that areas with low capacity but a large cluster of cells tend to be more congested. 
 
 ### Hypothesis
-We also hypothesize that the LightGBM will improve as capacity is positively correlated with demand with an r^2 value of 0.33.
+We hypothesize that including capacity will improve the performance of the model over the baseline. Further, we hypothesize that the LightGBM models will improve due to its reliance on the feature set.
+
 
 <img src="images/demand_capacity.png"/>
 
 ### Finding
 <img src="images/capacity.png"/>
 
-Adding capacity only improved the performance of the DE-HNN model by 0.6%, showing that it did not have much of an impact on the model. We believe that this result follows our previous finding that the DE-HNN only learns from the graph structure and not the features. Since high capacity areas can be correlated with densely connected areas in the graph with a lot of cells nearby, the DE-HNN could be estimating capacity by itself without needing an explicit feature for it.
+Adding capacity only improved the performance of the DE-HNN model by 0.6%, showing that it did not have much of an impact on the model. This result follows our previous finding that the DE-HNN only learns from the graph structure and not the features. Since high capacity areas are correlated with densely connected areas in the graph, the DE-HNN may already be estimating capacity without needing an explicit feature for it.
 
-However we see an improvement of 41.6% in the LightGBM model after we add capacity. Since a tree model has no way to model the graph structure, it needs to be given features like capacity explicitly as it relates to the graph. Capacity is more correlated with demand than other features, making the tree model’s performance almost comparable to the DE-HNN. Although the loss is 24% worse, the training time is almost 100 times faster, giving a great tradeoff of accuracy for speed.
+However, we see an improvement of 41.6% in the LightGBM model upon including capacity. Since a tree model has no way to model the graph structure, it needs to be explicitly given features like capacity. Capacity is more correlated with demand than other features, making the LightGBM’s performance comparable to the DE-HNN. Although the loss is still worse than the baseline, the training time is almost 100x faster, giving a great tradeoff of accuracy for speed.
+
 
 ## Partitioning
 
@@ -149,14 +150,15 @@ Chip designs translate to noisy, gigantic graphs, and it may be difficult for th
 <details>
 <summary>Extra Details</summary>
 <br>
-In the DE-HNN model, virtual nodes are inserted into the graph to connect nodes within a given partition. This partition is identified using the METIS algorithm. METIS is well-regarded for its efficiency in handling large-scale graphs and its ability to produce balanced partitions while minimizing inter-partition edge cuts. There are two key parameters considered when initializing METIS: `nparts` and `ufactor`. The former is self-explanatory - it is the number of partitions the input graph should be divided into. The latter controls the permissible imbalance between partition sizes. A low ufactor enforces balance, but might hide natural variations in structure; a higher ufactor might let natural clusters emerge even if they are of unequal sizes. While the DE-HNN model prioritized balanced partitions, our intuition regarding chip design suggested a higher ufactor may reveal clusters of nodes representing real, cohesive units within the chip.
+In the DE-HNN model, virtual nodes are inserted into the graph to connect nodes within a given partition. This partition is identified using the METIS algorithm, well-regarded for its efficiency in handling large-scale graphs and producing balanced partitions while minimizing inter-partition edge cuts. There are two key parameters considered when initializing METIS: `nparts` and `ufactor`. `nparts` refers to the number of partitions the input graph should be divided into, and `ufactor` controls the permissible imbalance between partition sizes. A low ufactor enforces balance, but might hide natural variations in structure; a higher ufactor might let natural clusters emerge even if they are of unequal sizes. While the DE-HNN model prioritized balanced partitions, our intuition regarding chip design suggested a higher ufactor may reveal clusters of nodes representing real, cohesive units within the chip. 
 <br><br>
 
-In our experiments, we varied the ufactor from 0 to 900 in steps of 100, and the number of partitions was varied from 10 to 100 in steps of 10. This systematic parameter sweep allowed us to evaluate partition quality across a broad spectrum of configurations. The quality of a given partitioning is evaluated through the conductance metrics. The results of our parameter sweep are depicted in Figure X. Based on our evaluations, a setting of ufactor = 600 and 10 partitions was identified as optimal for the full graph. 
+In our experiments, we varied the ufactor from 0 to 900 in steps of 100, and the number of partitions was varied from 10 to 100 in steps of 10. We ran a parameter sweep that allowed us to evaluate partition quality in terms of conductance. A lower conductance value indicates that a partition is well-separated from the rest of the graph, suggesting a strong internal cohesion. In our approach, both the maximum and average conductance values across partitions are computed. The maximum conductance reflects the worst-case quality among all partitions, whereas the average provides an overall measure of separability. The results of our parameter sweep are depicted in Figure X. Based on our evaluations, a setting of ufactor = 600 and 10 partitions was identified as optimal for the full graph.
 <br><br>
 
 Recognizing that the global partitioning might obscure local substructures, we implemented a hierarchical refinement strategy, dubbed ‘Subpartitioning’. Following the initial partitioning, each of the 10 partitions was treated as an independent subgraph. For each subgraph, we reapplied the same heatmap-based parameter sweep and assessed local partition quality. The same parameter settings that were optimal for the global graph were identified as optimal for the subgraphs. This multi-level approach allowed us to capture nested modular structures that are characteristic of chip designs. 
 This strategy resulted in 1000 “new” graphs, potentially representing functionally cohesive blocks within the chip. To mimic the original set of node and net features, we recompute the degree and Laplacian eigenvector for each node and net. Though the training set has increased 100-fold, each graph is, on average, 1/100th the size of the original graph. This will dramatically cut the computational resources required to train the model. Further, we hypothesized that this strategy would allow the model to better understand the common substructures present across different designs, aiding the models generalizability on unseen designs.
+
 </details>
 
 ### Hypothesis
@@ -165,50 +167,41 @@ Chip designs likely share certain substructures, which better encapsulate local 
 ### Finding
 <img src="images/partitioning.png"/>
 
-Subpartitioning noticeably improves performance, while significantly reducing training time and required memory. In initial experiments, we observed that the loss plots were highly erratic. Clearly, because of increasing the number of training samples, the model was giving too much weight to each sample, and appeared not to converge. Reducing the learning rate by a factor of 100 allowed the model to converge incredibly quickly. In fact, in figure X, we see the model achieve a lower test loss than the baseline model. These results suggest that reducing the problem was a viable strategy and allowed the GNN to better capture local dependencies. We believe the model learned to identify smaller common networks in the chip, aided by, importantly, training on smaller, cohesive graphs.
-
+Subpartitioning noticeably improves performance, while significantly reducing training time and required memory. In initial experiments, we observed that the loss plots were highly erratic and failed to converge, due to the increased amount of training graphs. Reducing the learning rate by a factor of 100 allowed the model to quickly and smoothly converge. In fact, we see the model achieve a lower test loss than the baseline model. These results suggest that reducing the problem was a viable strategy and allowed the GNN to better capture local dependencies. We believe the model learned to identify smaller common networks in the chip, aided by, importantly, training on smaller, cohesive graphs.
 
 
 ## Downsampling
 
-In our EDA, we noticed that the demand variable is bimodal, with a smaller peak between 0 and 5 and a much larger peak between 15 and 20. In conducting an error analysis on the baseline model, we noticed that it generally did well at predicting values around the larger peak, but failed to recognize the second common range of values. 
+In our EDA, we noticed that the demand variable is bimodal, with a smaller peak between 0 and 5 and a much larger peak between 15 and 20 (refer to \ref{fig:heatmap_histogram}b). In conducting an error analysis on the baseline model, we noticed that it generally did well at predicting values around the larger peak, but failed to recognize the second common range of values. 
 
-To try and create a more representative model that is able to derive learnings relevant to the full dataset, we decided to implement downsampling (or undersampling) - a process in which the training data is binned by the target variable, and each bin is randomly sampled to ensure equal sizes. This ensures that the dataset is balanced across the full range of the target variable, and will ideally allow us to improve the model’s performance. 
+To try and create a more representative model that derives learnings relevant to the full dataset, we decided to implement downsampling - a process in which the training data is binned by the target variable, and each bin is randomly sampled to ensure equal sizes. This ensures that the dataset is balanced across the distribution of the target variable, and will ideally allow us to improve the model’s performance. Choosing the number of bins and the bounds of each bin was an important task, as these outputs could significantly alter the final model’s predictions. To ensure a balanced dataset, while minimizing the amount of data removed, we performed a parameter sweep over the bin count and size. We also ensured that the edges also matched the new, smaller dataset by removing connections that involved a removed node, which may have damaged local structures, but helped shrink the overall dataset. 
 
-<details>
-<summary>Extra Details</summary>
-<br>
-Choosing the number of bings and the bounds of each bin was an important task, as these outputs could significantly alter the final model’s predictions. To choose the bins, we defined multiple different bin counts/ranges, and performed a search on the final dataset size, with the intention of ensuring a balanced dataset, while minimizing the amount of data removed.
-<br><br>
-Because our dataset is a graph, we also had to ensure that the edges also matched the new, smaller dataset. This involved an iteration through all the nodes and edges to ensure that we didn’t lose any edges that needed to remain in the smaller dataset, while also retaining as much of the graph as possible. From this downsampling process, we hypothesized that we would be able to improve test and validation accuracy, while preventing overfitting. We also expected that a reduced dataset size would improve the runtime.
-</details>
 
 ### Hypothesis
-Downsampling will create a balanced distribution for training, which will lead to improved generalization on unseen data
+From this downsampling process, we hypothesized that we would be able to improve generalize to more chips, while preventing overfitting. We also expected that a reduced dataset size would improve the runtime.
 
 ### Finding
 <img src="images/downsampling.png"/>
 
-Downsampling slightly reduced both the validation and test RMSE, suggesting that this method did help the model generalize slightly better. Even though the downsampled dataset was slightly different every time, due to random sampling, these results were relatively consistent. The biggest improvement, however, was in terms of the training time, which was cut in half. This is driven by the significantly reduced dataset, not just in terms of the number of nodes, but also the connections between them. In addition, the model trained on the downsampled dataset also converged slightly faster.
+Downsampling slightly reduced both the validation and test RMSE, suggesting that this method did help the model generalize slightly better. Even though the downsampled dataset was slightly different every time, due to random sampling, these results were relatively consistent. The larger improvement, however, was in terms of the training time, which was cut in half. This is driven by the significantly reduced dataset, not just in terms of the number of nodes, but also the connections between them. In addition, the model trained on the downsampled dataset converged slightly faster.
 
-The fact that this approach was able to replicate the performance of the DE-HNN could suggest that not all the information in the dense graph is relevant, and that not much information is lost with a cursory downsampling approach. Using domain specific knowledge or a more informed approach to defining the bins for downsampling could lead to even further improvements. 
+The fact that this approach was able to replicate the performance of the DE-HNN may suggest that not all the information in the dense graph is relevant, and that not much information is lost with a stratified downsampling approach. Using domain specific knowledge or a more informed approach to defining the bins for downsampling could lead to even further improvements. 
 
 
 ## Hypervectors
 
-Hypervectors are good in situations where we are not trying to squeeze out every last drop of performance in a model, .i.e. We are comfortable with decent but not fantastic performance. The pro is that it should be faster to train and be more generalizable. We incorporated the features in High-dimensional hypervectors to replace DE-HNN’s learned node and net feature embeddings to dramatically reduce memory costs. 
+The core idea of a GNN is to learn how to represent each node in the graph by considering its own features, the features of its neighbors, and the structure of the graph. The GNN allows information to propagate through the graph with message passing, or neighborhood aggregation, a process that is repeated in every layer of the model. This is a very complex model, especially when using virtual nodes to capture long-range interactions. 
 
-<details>
-<summary>Extra Details</summary>
-<br>
-Instead of storing a dense embedding vector per node/net, each node or net is assigned a fixed hypervector (e.g. a 10,000-bit random vector which is easily initialized in python code) or computed from its attributes, eliminating large embedding tables. We suspect this distributed representation is more highly generalizable – similar node features map to similar hypervectors, improving the model’s ability to transfer to new circuits.​
-</details>
+We believe that there may be limitations of representing data as nodes and edges in a graph, which essentially reduces the dimensionality of the data. Intuitively, AI models thrive on high-dimensional data, and GNNs, by their very nature, restrict the dimensionality. We decided to implement Hypervector Feature Encoding: either replace or augment DE-HNN’s input layer to use hypervector representations for nodes and nets, as they allow for a much richer representation of data with higher dimensionality. We started by encoding each node’s features into a 10,000-bit random vector. To mitigate accuracy loss, we can introduce lightweight learned components on top of hypervector outputs. This can recover some of the fine-grained optimization capability of deep networks while still keeping the bulk of computation in the ultra-efficient HDC domain.
+
 
 ### Hypothesis
-The hypervector model should be much faster to train than the GNN, while being slightly less accurate in its predictions.
+We hypothesize that this change will help simplify the DE-HNN architecture, drastically reduce memory overhead (as there is no need to learn/store huge embedding matrices), and improve cross-design generalization​. 
+
 
 ### Finding
-We found integrating HDC in place of embeddings is faster and more memory efficient, although there were accuracy trade-offs. There is thus a potential accuracy trade-off: HDC might sacrifice a bit of peak accuracy in exchange for huge gains in speed and memory. This is reflected in the results in the classification of congested nodes which were in the 70s to 80s in accuracy.
+We found integrating hypervectors in place of embeddings is faster and more memory efficient, although it wasn’t as accurate. More specifically, a model trained on hypervectors was able to identify congestion with 70-80% accuracy, which was lower than the baseline. There is thus a potential accuracy trade-off: hyperdimensional computing (HDC)  might sacrifice a bit of peak accuracy in exchange for gains in speed and memory.
+
 
 <p> <a name="conclusion"> </a> </p>
 
@@ -223,3 +216,4 @@ As naive as our algorithms were, we believe that their performance can be enhanc
 Of course, with different constraints, from varying use-cases to time and compute restrictions, comes a trade-off. A cursory analysis early in a chip’s design might not require the extensive training time of a GNN, and can be sufficiently modeled with a tree architecture. Certain chips may call for the preservation of local structures and a partitioning approach. Designing a new chip from scratch may benefit from building up a downsampled design of a similar chip. 
 
 Expanding on these experiments will likely depend on specific contexts, and we believe they can be further by methodical, domain-guided alterations to the algorithms we propose. It will be interesting to further explore this direction. 
+

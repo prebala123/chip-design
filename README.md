@@ -57,6 +57,8 @@ Our work is an extension of the work done in the following paper:
 
 (8) ```tree_modeling.ipynb``` experiments with LightGBM and Random Forest approaches to the demand regression problem. It also creates SHAP plots. 
 
+(9) ```subpartitioning``` contains code for running the subpartitioning experiment. Please refer to README_SUB.md (inside the folder) for more information.
+
 ## Environment Setup
 
 The code is based on Python version 3.8.8 and most of the dependencies can be installed using 
